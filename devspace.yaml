@@ -17,7 +17,7 @@ deployments:
   # This deployment uses `kubectl` but you can also define `helm` deployments
   kubectl:
     manifests:
-    - manifests/**
+    - manifests/dev/*
 
 # `dev` only applies when you run `devspace dev`
 dev:

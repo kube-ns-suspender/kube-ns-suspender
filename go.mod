@@ -3,6 +3,7 @@ module github.com/govirtuo/kube-ns-suspender
 go 1.17
 
 require (
+	github.com/rs/zerolog v1.25.0
 	k8s.io/api v0.22.2
 	k8s.io/apimachinery v0.22.2
 	k8s.io/client-go v0.22.2

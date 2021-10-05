@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"os"
+	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -21,70 +23,98 @@ import (
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/openstack"
 )
 
+type watchlist []v1.Namespace
+
+type engine struct {
+	logger zerolog.Logger
+	m      sync.Mutex
+	wl     watchlist
+}
+
 func main() {
+	var eng = engine{
+		logger: zerolog.New(os.Stderr).With().Timestamp().Logger(),
+	}
+	eng.logger.Info().Msg("kube-ns-suspender launched")
+
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		panic(err.Error())
+		eng.logger.Fatal().Err(err).Msg("cannot create in-cluster configuration")
 	}
+	eng.logger.Debug().Msg("in-cluster configuration successfully created")
+
 	// creates the clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err.Error())
+		eng.logger.Fatal().Err(err).Msg("cannot create the clientset")
 	}
+	eng.logger.Debug().Msg("clientset successfully created")
+
+	ctx := context.Background()
+	go eng.watcher(ctx, clientset)
+
+	select {}
+}
+
+// watcher periodically watches the namespaces, and add them to the engine
+// watchlist if they have the 'kube-ns-suspender/desiredState' set.
+func (eng *engine) watcher(ctx context.Context, cs *kubernetes.Clientset) {
+	wlLogger := eng.logger.With().Str("routine", "watcher").Logger()
+	wlLogger.Info().Msg("watcher started")
+	ctx, cancel := context.WithCancel(ctx)
+
+	var inventoryID int
 	for {
-		fmt.Println("=-= NEW SCAN =-=")
-		// get all namespaces
-		ns, err := clientset.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
+		wlLogger.Debug().Int("inventory id", inventoryID).Msg("starting new namespaces inventory")
+		ns, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{}) // think about adding a label to filter here
 		if err != nil {
-			panic(err.Error())
+			cancel()
+			wlLogger.Fatal().Err(err).Msg("cannot list namespaces")
 		}
 
-		// display all namespaces
-		fmt.Println("Namespaces:")
+		eng.m.Lock()
+		// look for new namespaces to watch
 		for _, n := range ns.Items {
-			fmt.Printf("  * %s\n", n.Name)
-		}
-		fmt.Println()
-
-		// display all namespaces with annotation kube-ns-suspender: "true"
-		var feNamespaces []v1.Namespace
-		fmt.Println("Namespaces using FEscaler:")
-		for _, n := range ns.Items {
-			if v, ok := n.Annotations["kube-ns-suspender"]; ok {
-				if v == "true" {
-					fmt.Printf("  * %s\n", n.Name)
-					feNamespaces = append(feNamespaces, n)
+			if _, ok := n.Annotations["kube-ns-suspender/desiredState"]; ok {
+				if !isNamespaceInWatchlist(n, eng.wl) {
+					eng.wl = append(eng.wl, n)
 				}
 			}
 		}
-		fmt.Println()
 
-		// display all deployments in namespaces that have kube-ns-suspender
-		for _, ns := range feNamespaces {
-			fmt.Printf("Deployments in %s:\n", ns.Name)
-			depl, err := clientset.AppsV1().Deployments(ns.Name).List(context.TODO(), metav1.ListOptions{})
-			if err != nil {
-				panic(err.Error())
-			}
-			for _, d := range depl.Items {
-				if d.Name != "kube-ns-suspender-depl" { // debug purposes
-					numReplicas := int(*d.Spec.Replicas)
-					fmt.Printf("  * %s (repl: %d)\n", d.Name, numReplicas)
-					s, err := clientset.AppsV1().Deployments(ns.Name).GetScale(context.TODO(), d.Name, metav1.GetOptions{})
-					if err != nil {
-						panic(err.Error())
-					}
-					sc := *s
-					sc.Spec.Replicas = int32(numReplicas) + 1
-					_, err = clientset.AppsV1().Deployments(ns.Name).UpdateScale(context.TODO(), d.Name, &sc, metav1.UpdateOptions{})
-					if err != nil {
-						log.Fatal(err)
-					}
-				}
-			}
+		// remove unused namespaces
+		eng.wl = removeUnusedNamespaces(ns, eng.wl)
+		for _, v := range eng.wl {
+			fmt.Println(v.Name)
 		}
-		fmt.Println()
-		time.Sleep(1 * time.Minute)
+		eng.m.Unlock()
+		wlLogger.Debug().Int("inventory id", inventoryID).Msg("namespaces inventory ended")
+		inventoryID++
+		time.Sleep(15 * time.Second)
 	}
+}
+
+// isNamespaceInWatchlist checks if ns is already in the watchlist
+func isNamespaceInWatchlist(ns v1.Namespace, wl watchlist) bool {
+	for _, n := range wl {
+		if n.Name == ns.Name {
+			return true
+		}
+	}
+	return false
+}
+
+// removeUnusedNamespaces removes namespaces that are no longer in use from
+// watchlist
+func removeUnusedNamespaces(ns *v1.NamespaceList, wl watchlist) watchlist {
+	for i, n := range wl {
+		// if a ns is in the watchlist but no longer in the freshly scanned list,
+		// drop it
+		if !isNamespaceInWatchlist(n, ns.Items) {
+			wl[i] = wl[len(wl)-1]
+			wl = wl[:len(wl)-1]
+		}
+	}
+	return wl
 }
