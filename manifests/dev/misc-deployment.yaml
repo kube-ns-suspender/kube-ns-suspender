@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misc-depl
+  # namespace: plop
+  labels:
+    app: misc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: misc
+  template:
+    metadata:
+      labels:
+        app: misc
+    spec:
+      containers:
+      - name: misc
+        image: nginx:latest
+        ports:
+        - containerPort: 80

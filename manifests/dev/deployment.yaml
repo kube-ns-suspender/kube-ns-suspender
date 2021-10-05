@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-ns-suspender-depl
+  labels:
+    app: kube-ns-suspender
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-ns-suspender
+  template:
+    metadata:
+      labels:
+        app: kube-ns-suspender
+    spec:
+      serviceAccountName: kube-ns-suspender
+      containers:
+      - name: kube-ns-suspender
+        image: ez3kiel/kube-ns-suspender
