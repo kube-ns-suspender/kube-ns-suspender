@@ -29,11 +29,17 @@ type Engine struct {
 }
 
 // New returns a new engine instance
-func New() *Engine {
+func New(loglvl string) (*Engine, error) {
 	e := Engine{
 		Logger: zerolog.New(os.Stderr).With().Timestamp().Logger(),
 	}
-	return &e
+
+	lvl, err := zerolog.ParseLevel(loglvl)
+	if err != nil {
+		return nil, err
+	}
+	e.Logger = e.Logger.Level(lvl)
+	return &e, nil
 }
 
 // watcher periodically watches the namespaces, and add them to the engine

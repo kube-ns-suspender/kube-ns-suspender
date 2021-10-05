@@ -10,6 +10,7 @@ require (
 )
 
 require (
+	cloud.google.com/go v0.54.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-logr/logr v0.4.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect

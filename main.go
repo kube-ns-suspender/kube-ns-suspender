@@ -2,23 +2,25 @@ package main
 
 import (
 	"context"
+	"flag"
 
 	"github.com/govirtuo/kube-ns-suspender/engine"
+	"github.com/rs/zerolog/log"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	//
-	// Uncomment to load all auth plugins
-	// _ "k8s.io/client-go/plugin/pkg/client/auth"
-	//
-	// Or uncomment to load specific auth plugins
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/azure"
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
-	// _ "k8s.io/client-go/plugin/pkg/client/auth/openstack"
+
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
 func main() {
-	eng := engine.New()
+	var loglvl string
+	flag.StringVar(&loglvl, "loglevel", "debug", "Log level")
+	flag.Parse()
+
+	eng, err := engine.New(loglvl)
+	if err != nil {
+		log.Fatal().Err(err).Msg("cannot create new engine")
+	}
 	eng.Logger.Info().Msg("kube-ns-suspender launched")
 
 	// create the in-cluster config
