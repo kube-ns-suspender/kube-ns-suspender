@@ -65,9 +65,9 @@ func (eng *engine) watcher(ctx context.Context, cs *kubernetes.Clientset) {
 	wlLogger.Info().Msg("watcher started")
 	ctx, cancel := context.WithCancel(ctx)
 
-	var inventoryID int
+	var id int
 	for {
-		wlLogger.Debug().Int("inventory id", inventoryID).Msg("starting new namespaces inventory")
+		wlLogger.Debug().Int("inventory id", id).Msg("starting new namespaces inventory")
 		ns, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{}) // TODO: think about adding a label to filter here
 		if err != nil {
 			cancel()
@@ -90,8 +90,8 @@ func (eng *engine) watcher(ctx context.Context, cs *kubernetes.Clientset) {
 			fmt.Println(v.Name)
 		}
 		eng.m.Unlock()
-		wlLogger.Debug().Int("inventory id", inventoryID).Msg("namespaces inventory ended")
-		inventoryID++
+		wlLogger.Debug().Int("inventory id", id).Msg("namespaces inventory ended")
+		id++
 		time.Sleep(15 * time.Second)
 	}
 }
