@@ -37,6 +37,7 @@ func main() {
 
 	ctx := context.Background()
 	go eng.Watcher(ctx, clientset)
+	go eng.Suspender(ctx, clientset)
 
 	// wait forever
 	select {}
