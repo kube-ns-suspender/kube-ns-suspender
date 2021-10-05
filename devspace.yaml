@@ -1,0 +1,71 @@
+version: v1beta11
+
+# `vars` specifies variables which may be used as ${VAR_NAME} in devspace.yaml
+vars:
+- name: REGISTRY_PASSWORD
+  password: true
+- name: IMAGE
+  value: eu.gcr.io/infra-269416/kube-ns-suspender
+pullSecrets:
+- registry: eu.gcr.io
+  username: ${REGISTRY_USERNAME}
+  password: ${REGISTRY_PASSWORD}
+
+# `deployments` tells DevSpace how to deploy this project
+deployments:
+- name: kube-ns-suspender
+  # This deployment uses `kubectl` but you can also define `helm` deployments
+  kubectl:
+    manifests:
+    - manifests/**
+
+# `dev` only applies when you run `devspace dev`
+dev:
+  # `dev.sync` configures a file sync between our Pods in k8s and your local project files
+  sync:
+  - imageSelector: ${IMAGE} # Select the Pod that runs our `${IMAGE}`
+    excludePaths:
+    - .git/
+
+  # `dev.terminal` tells DevSpace to open a terminal as a last step during `devspace dev`
+  terminal:
+    imageSelector: ${IMAGE} # Select the Pod that runs our `${IMAGE}`
+    # With this optional `command` we can tell DevSpace to run a script when opening the terminal
+    # This is often useful to display help info for new users or perform initial tasks (e.g. installing dependencies)
+    # DevSpace has generated an example ./devspace_start.sh file in your local project - Feel free to customize it!
+    command:
+    - ./devspace_start.sh
+
+  # Since our Helm charts and manifests deployments are often optimized for production,
+  # DevSpace let's you swap out Pods dynamically to get a better dev environment
+  replacePods:
+  - imageSelector: ${IMAGE} # Select the Pod that runs our `${IMAGE}`
+    # Since the `${IMAGE}` used to start our main application pod may be distroless or not have any dev tooling, let's replace it with a dev-optimized image
+    # DevSpace provides a sample image here but you can use any image for your specific needs
+    replaceImage: loftsh/go:latest
+    # Besides replacing the container image, let's also apply some patches to the `spec` of our Pod
+    # We are overwriting `command` + `args` for the first container in our selected Pod, so it starts with `sleep 9999999`
+    # Using `sleep 9999999` as PID 1 (instead of the regular ENTRYPOINT), allows you to start the application manually
+    patches:
+    - op: replace
+      path: spec.containers[0].command
+      value:
+      - sleep
+    - op: replace
+      path: spec.containers[0].args
+      value:
+      - "9999999"
+    - op: remove
+      path: spec.containers[0].securityContext
+
+# `profiles` lets you modify the config above for different environments (e.g. dev vs production)
+profiles:
+  # This profile is called `production` and you can use it for example using: devspace deploy -p production
+  # We generally recommend to use the base config without any profiles as optimized for development (e.g. image build+push is disabled)
+- name: production
+# This profile adds our image to the config so that DevSpace will build, tag and push our image before the deployment
+  merge:
+    images:
+      app:
+        image: ${IMAGE} # Use the value of our `${IMAGE}` variable here (see vars above)
+        dockerfile: ./Dockerfile
