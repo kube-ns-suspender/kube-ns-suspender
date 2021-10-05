@@ -37,14 +37,14 @@ func main() {
 	}
 	eng.logger.Info().Msg("kube-ns-suspender launched")
 
-	// creates the in-cluster config
+	// create the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		eng.logger.Fatal().Err(err).Msg("cannot create in-cluster configuration")
 	}
 	eng.logger.Debug().Msg("in-cluster configuration successfully created")
 
-	// creates the clientset
+	// create the clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		eng.logger.Fatal().Err(err).Msg("cannot create the clientset")
@@ -54,6 +54,7 @@ func main() {
 	ctx := context.Background()
 	go eng.watcher(ctx, clientset)
 
+	// wait forever
 	select {}
 }
 
@@ -67,7 +68,7 @@ func (eng *engine) watcher(ctx context.Context, cs *kubernetes.Clientset) {
 	var inventoryID int
 	for {
 		wlLogger.Debug().Int("inventory id", inventoryID).Msg("starting new namespaces inventory")
-		ns, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{}) // think about adding a label to filter here
+		ns, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{}) // TODO: think about adding a label to filter here
 		if err != nil {
 			cancel()
 			wlLogger.Fatal().Err(err).Msg("cannot list namespaces")
