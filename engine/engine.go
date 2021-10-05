@@ -68,11 +68,6 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 			}
 		}
 
-		// debug: on
-		// for _, v := range eng.Wl {
-		// 	fmt.Println(v.Name)
-		// }
-		// debug: off
 		eng.Mutex.Unlock()
 		wlLogger.Debug().Int("inventory id", id).Msg("namespaces inventory ended")
 		id++
@@ -88,28 +83,16 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 	time.Sleep(100 * time.Millisecond)
 
 	for {
-		// we do a copy of the watchlist to avoid blocking the mutexes for too
-		// long. If any modification is done to the original watchlist, the
-		// changes will occur in the next iteration
 		eng.Mutex.Lock()
 		for _, n := range eng.Wl {
 			// get the namespace desired status
 			desiredState := n.Annotations["kube-ns-suspender/desiredState"]
-			// debug: on
-			// fmt.Printf("namespace %s status: %s\n", n.Name, desiredState)
-			// debug: off
 
 			// get the deployments of the namespace
 			deployments, err := cs.AppsV1().Deployments(n.Name).List(ctx, metav1.ListOptions{})
 			if err != nil {
 				sLogger.Fatal().Err(err).Str("namespace", n.Name).Msg("cannot list deployments")
 			}
-			// debug: on
-			// fmt.Printf("namespace: %s\n", n.Name)
-			// for _, d := range deployments.Items {
-			// 	fmt.Println(d.Name)
-			// }
-			// debug: off
 
 			switch desiredState {
 			case running:
