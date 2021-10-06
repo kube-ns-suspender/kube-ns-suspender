@@ -24,12 +24,10 @@ const (
 	suspended = "Suspended"
 )
 
-type Watchlist []v1.Namespace
-
 type Engine struct {
 	Logger      zerolog.Logger
 	Mutex       sync.Mutex
-	Wl          Watchlist
+	Wl          chan v1.Namespace
 	MetricsServ metrics.Server
 }
 
@@ -37,6 +35,7 @@ type Engine struct {
 func New(loglvl string) (*Engine, error) {
 	e := Engine{
 		Logger: zerolog.New(os.Stderr).With().Timestamp().Logger(),
+		Wl:     make(chan v1.Namespace, 50),
 	}
 
 	lvl, err := zerolog.ParseLevel(loglvl)
@@ -63,13 +62,14 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 
 		eng.Mutex.Lock()
 		// clean the watchlist
-		eng.Wl = Watchlist{}
+		// eng.Wl = Watchlist{}
 		// look for new namespaces to watch
 		for _, n := range ns.Items {
 			if _, ok := n.Annotations["kube-ns-suspender/desiredState"]; ok {
-				if !isNamespaceInWatchlist(n, eng.Wl) {
-					eng.Wl = append(eng.Wl, n)
-				}
+				// if !isNamespaceInWatchlist(n, eng.Wl) {
+				// 	eng.Wl = append(eng.Wl, n)
+				// }
+				eng.Wl <- n
 			}
 		}
 		// update the watchlist lenght metric
@@ -90,76 +90,78 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 	for {
 		eng.Mutex.Lock()
-		for _, n := range eng.Wl {
-			// get the namespace desired status
-			desiredState := n.Annotations["kube-ns-suspender/desiredState"]
+		// wait for the next namespace to check
+		n := <-eng.Wl
 
-			// get deployments of the namespace
-			deployments, err := cs.AppsV1().Deployments(n.Name).List(ctx, metav1.ListOptions{})
-			if err != nil {
-				sLogger.Fatal().Err(err).Str("namespace", n.Name).Str("object", "deployment").Msg("cannot list deployments")
-			}
+		// for _, n := range eng.Wl {
+		// get the namespace desired status
+		desiredState := n.Annotations["kube-ns-suspender/desiredState"]
 
-			// get cronjobs of the namespace
-			cronjobs, err := cs.BatchV1beta1().CronJobs(n.Name).List(ctx, metav1.ListOptions{})
-			if err != nil {
-				sLogger.Fatal().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("cannot list cronjobs")
-			}
-
-			// get statefulsets of the namespace
-			statefulsets, err := cs.AppsV1().StatefulSets(n.Name).List(ctx, metav1.ListOptions{})
-			if err != nil {
-				sLogger.Fatal().Err(err).Str("namespace", n.Name).Str("object", "statefulset").Msg("cannot list statefulsets")
-			}
-
-			// TODO: add sync.WaitGroup here to // the work on each kind of object
-			switch desiredState {
-			case running:
-				// check and patch deployments
-				if err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
-					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "deployment").Msg("running deployments conformity checks failed")
-				}
-				// check and patch cronjobs
-				if err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
-					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("running cronjobs conformity checks failed")
-				}
-				// check and patch statefulsets
-				if err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
-					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "statefulset").Msg("running steatfulsets conformity checks failed")
-				}
-			case suspended:
-				// check and patch deployments
-				if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
-					sLogger.Error().Err(err).Msg("suspended conformity checks failed")
-				}
-				// check and patch cronjobs
-				if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
-					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("suspended cronjobs conformity checks failed")
-				}
-				// check and patch statefulsets
-				if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
-					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "statefulset").Msg("suspended steatfulsets conformity checks failed")
-				}
-			default:
-				errMsg := fmt.Sprintf("state %s is not a supported state", desiredState)
-				sLogger.Error().Err(errors.New(errMsg)).Msg("desired state cannot be recognised")
-			}
+		// get deployments of the namespace
+		deployments, err := cs.AppsV1().Deployments(n.Name).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			sLogger.Fatal().Err(err).Str("namespace", n.Name).Str("object", "deployment").Msg("cannot list deployments")
 		}
 
+		// get cronjobs of the namespace
+		cronjobs, err := cs.BatchV1beta1().CronJobs(n.Name).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			sLogger.Fatal().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("cannot list cronjobs")
+		}
+
+		// get statefulsets of the namespace
+		statefulsets, err := cs.AppsV1().StatefulSets(n.Name).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			sLogger.Fatal().Err(err).Str("namespace", n.Name).Str("object", "statefulset").Msg("cannot list statefulsets")
+		}
+
+		// TODO: add sync.WaitGroup here to // the work on each kind of object
+		switch desiredState {
+		case running:
+			// check and patch deployments
+			if err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
+				sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "deployment").Msg("running deployments conformity checks failed")
+			}
+			// check and patch cronjobs
+			if err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
+				sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("running cronjobs conformity checks failed")
+			}
+			// check and patch statefulsets
+			if err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
+				sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "statefulset").Msg("running steatfulsets conformity checks failed")
+			}
+		case suspended:
+			// check and patch deployments
+			if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
+				sLogger.Error().Err(err).Msg("suspended conformity checks failed")
+			}
+			// check and patch cronjobs
+			if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
+				sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("suspended cronjobs conformity checks failed")
+			}
+			// check and patch statefulsets
+			if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
+				sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "statefulset").Msg("suspended steatfulsets conformity checks failed")
+			}
+		default:
+			errMsg := fmt.Sprintf("state %s is not a supported state", desiredState)
+			sLogger.Error().Err(errors.New(errMsg)).Msg("desired state cannot be recognised")
+		}
+		// }
 		eng.Mutex.Unlock()
 		time.Sleep(15 * time.Second)
 	}
 }
 
 // isNamespaceInWatchlist checks if ns is already in the watchlist
-func isNamespaceInWatchlist(ns v1.Namespace, wl Watchlist) bool {
-	for _, n := range wl {
-		if n.Name == ns.Name {
-			return true
-		}
-	}
-	return false
-}
+// func isNamespaceInWatchlist(ns v1.Namespace, wl Watchlist) bool {
+// 	for _, n := range wl {
+// 		if n.Name == ns.Name {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 // checkRunningDeploymentsConformity verifies that all deployments within the namespace are
 // currently running
