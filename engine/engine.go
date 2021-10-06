@@ -12,6 +12,7 @@ import (
 	"github.com/govirtuo/kube-ns-suspender/metrics"
 	"github.com/rs/zerolog"
 	appsv1 "k8s.io/api/apps/v1"
+	"k8s.io/api/batch/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -96,23 +97,41 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			// get deployments of the namespace
 			deployments, err := cs.AppsV1().Deployments(n.Name).List(ctx, metav1.ListOptions{})
 			if err != nil {
-				sLogger.Fatal().Err(err).Str("namespace", n.Name).Msg("cannot list deployments")
+				sLogger.Fatal().Err(err).Str("namespace", n.Name).Str("object", "deployment").Msg("cannot list deployments")
 			}
 
+			// get cronjobs of the namespace
+			cronjobs, err := cs.BatchV1beta1().CronJobs(n.Name).List(ctx, metav1.ListOptions{})
+			if err != nil {
+				sLogger.Fatal().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("cannot list cronjobs")
+			}
+
+			// TODO: add sync.WaitGroup here to // the work on each kind of object
 			switch desiredState {
 			case running:
-				if err := checkRunningConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
-					sLogger.Error().Err(err).Msg("running conformity checks failed")
+				// check and patch deployments
+				if err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
+					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "deployment").Msg("running deployments conformity checks failed")
+				}
+				// check and patch cronjobs
+				if err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
+					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("running cronjobs conformity checks failed")
 				}
 			case suspended:
-				if err := checkSuspendedConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
+				// check and patch deployments
+				if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
 					sLogger.Error().Err(err).Msg("suspended conformity checks failed")
+				}
+				// check and patch cronjobs
+				if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
+					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("running cronjobs conformity checks failed")
 				}
 			default:
 				errMsg := fmt.Sprintf("state %s is not a supported state", desiredState)
 				sLogger.Error().Err(errors.New(errMsg)).Msg("desired state cannot be recognised")
 			}
 		}
+
 		eng.Mutex.Unlock()
 		time.Sleep(15 * time.Second)
 	}
@@ -128,9 +147,9 @@ func isNamespaceInWatchlist(ns v1.Namespace, wl Watchlist) bool {
 	return false
 }
 
-// checkRunningConformity verifies that all deployments within the namespace are
+// checkRunningDeploymentsConformity verifies that all deployments within the namespace are
 // currently running
-func checkRunningConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string) error {
+func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string) error {
 	for _, d := range deployments {
 		// debug: on
 		if d.Name == "kube-ns-suspender-depl" {
@@ -155,7 +174,7 @@ func checkRunningConformity(ctx context.Context, l zerolog.Logger, deployments [
 	return nil
 }
 
-func checkSuspendedConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string) error {
+func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string) error {
 	for _, d := range deployments {
 		repl := int(*d.Spec.Replicas)
 		if repl != 0 {
@@ -163,6 +182,30 @@ func checkSuspendedConformity(ctx context.Context, l zerolog.Logger, deployments
 			l.Debug().Str("namespace", ns).Str("deployment", d.Name).Msgf("scaling %s from %d to 0 replicas", d.Name, repl)
 			// patch the deployment
 			if err := patchDeploymentReplicas(ctx, cs, ns, d.Name, 0); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func checkRunningCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string) error {
+	for _, c := range cronjobs {
+		if *c.Spec.Suspend {
+			l.Debug().Str("namespace", ns).Str("cronjob", c.Name).Msgf("updating %s from suspend: true to suspend: false", c.Name)
+			if err := patchCronjobSuspend(ctx, cs, ns, c.Name, false); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func checkSuspendedCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string) error {
+	for _, c := range cronjobs {
+		if !*c.Spec.Suspend {
+			l.Debug().Str("namespace", ns).Str("cronjob", c.Name).Msgf("updating %s from suspend: false to suspend: true", c.Name)
+			if err := patchCronjobSuspend(ctx, cs, ns, c.Name, true); err != nil {
 				return err
 			}
 		}
@@ -179,6 +222,23 @@ func patchDeploymentReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, 
 		}
 		result.Spec.Replicas = flip(int32(repl))
 		_, err = cs.AppsV1().Deployments(ns).Update(ctx, result, metav1.UpdateOptions{})
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// patchCronjobSuspend updates the suspend state of a giver cronjob
+func patchCronjobSuspend(ctx context.Context, cs *kubernetes.Clientset, ns, c string, suspend bool) error {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		result, err := cs.BatchV1beta1().CronJobs(ns).Get(ctx, c, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		result.Spec.Suspend = &suspend
+		_, err = cs.BatchV1beta1().CronJobs(ns).Update(ctx, result, metav1.UpdateOptions{})
 		return err
 	})
 	if err != nil {
