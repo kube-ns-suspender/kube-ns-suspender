@@ -3,4 +3,5 @@ kind: Namespace
 metadata:
   name: plop
   annotations:
-    kube-ns-suspender/desiredState: Suspended
+    kube-ns-suspender/desiredState: Running
+    kube-ns-suspender/suspendAt: "4:20PM"
