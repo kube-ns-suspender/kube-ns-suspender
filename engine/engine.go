@@ -29,13 +29,19 @@ type Engine struct {
 	Mutex       sync.Mutex
 	Wl          chan v1.Namespace
 	MetricsServ metrics.Server
+	TZ          *time.Location
 }
 
 // New returns a new engine instance
-func New(loglvl string) (*Engine, error) {
+func New(loglvl, tz string) (*Engine, error) {
+	var err error
 	e := Engine{
 		Logger: zerolog.New(os.Stderr).With().Timestamp().Logger(),
 		Wl:     make(chan v1.Namespace, 50),
+	}
+	e.TZ, err = time.LoadLocation(tz)
+	if err != nil {
+		return nil, err
 	}
 
 	lvl, err := zerolog.ParseLevel(loglvl)
@@ -77,7 +83,7 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		wlLogger.Debug().Int("inventory id", id).Msg("namespaces inventory ended")
 		eng.Mutex.Unlock()
 		id++
-		time.Sleep(15 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -89,9 +95,39 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 	time.Sleep(100 * time.Millisecond)
 
 	for {
-		eng.Mutex.Lock()
 		// wait for the next namespace to check
 		n := <-eng.Wl
+		eng.Mutex.Lock()
+
+		if suspendAt, ok := n.Annotations["kube-ns-suspender/suspendAt"]; ok {
+			// suspendAt is specified, so we need to check if we have to suspend
+			// the namespace
+			suspendTime, err := time.Parse(time.Kitchen, suspendAt)
+			if err != nil {
+				sLogger.Fatal().Err(err).Str("routine", "suspender").Str("namespace", n.Name).Msg("cannot parse suspend time")
+			}
+			suspendTimeInt := suspendTime.Minute() + suspendTime.Hour()*60
+
+			now := time.Now().In(eng.TZ)
+			nowInt := now.Minute() + now.Hour()*60
+
+			if suspendTimeInt <= nowInt {
+				// patch the namespace
+				err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+					result, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+					result.Annotations["kube-ns-suspender/desiredState"] = suspended
+					_, err = cs.CoreV1().Namespaces().Update(ctx, result, metav1.UpdateOptions{})
+					return err
+				})
+				if err != nil {
+					sLogger.Fatal().Err(err).Str("routine", "suspender").Str("namespace", n.Name).Msg("cannot get namespace object")
+				}
+				sLogger.Warn().Str("routine", "suspender").Str("namespace", n.Name).Msgf("suspended namespace %s based on indicated time", n.Name)
+			}
+		}
 
 		// for _, n := range eng.Wl {
 		// get the namespace desired status

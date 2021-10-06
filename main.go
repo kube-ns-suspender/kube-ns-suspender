@@ -14,12 +14,13 @@ import (
 )
 
 func main() {
-	var loglvl string
+	var loglvl, tz string
 	flag.StringVar(&loglvl, "loglevel", "debug", "Log level")
+	flag.StringVar(&tz, "timezone", "Europe/Paris", "Timezone to use")
 	flag.Parse()
 
 	// create the engine
-	eng, err := engine.New(loglvl)
+	eng, err := engine.New(loglvl, tz)
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot create new engine")
 	}
