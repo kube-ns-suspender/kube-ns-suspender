@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,57 +95,82 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		}
 
 		// TODO: add sync.WaitGroup here to // the work on each kind of object
+		var wg sync.WaitGroup
 		switch desiredState {
 		case running:
+			wg.Add(3)
 			// check and patch deployments
-			if err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
-				sLogger.Error().
-					Err(err).
-					Str("namespace", n.Name).
-					Str("object", "deployment").
-					Msg("running deployments conformity checks failed")
-			}
+			go func() {
+				if err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
+					sLogger.Error().
+						Err(err).
+						Str("namespace", n.Name).
+						Str("object", "deployment").
+						Msg("running deployments conformity checks failed")
+				}
+				wg.Done()
+			}()
+
 			// check and patch cronjobs
-			if err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
-				sLogger.Error().
-					Err(err).
-					Str("namespace", n.Name).
-					Str("object", "cronjob").
-					Msg("running cronjobs conformity checks failed")
-			}
+			go func() {
+				if err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
+					sLogger.Error().
+						Err(err).
+						Str("namespace", n.Name).
+						Str("object", "cronjob").
+						Msg("running cronjobs conformity checks failed")
+				}
+				wg.Done()
+			}()
+
 			// check and patch statefulsets
-			if err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
-				sLogger.Error().
-					Err(err).
-					Str("namespace", n.Name).
-					Str("object", "statefulset").
-					Msg("running steatfulsets conformity checks failed")
-			}
+			go func() {
+				if err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
+					sLogger.Error().
+						Err(err).
+						Str("namespace", n.Name).
+						Str("object", "statefulset").
+						Msg("running steatfulsets conformity checks failed")
+				}
+				wg.Done()
+			}()
 		case suspended:
+			wg.Add(3)
 			// check and patch deployments
-			if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
-				sLogger.Error().
-					Err(err).
-					Str("namespace", n.Name).
-					Str("object", "deployment").
-					Msg("suspended conformity checks failed")
-			}
+			go func() {
+				if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
+					sLogger.Error().
+						Err(err).
+						Str("namespace", n.Name).
+						Str("object", "deployment").
+						Msg("suspended conformity checks failed")
+				}
+				wg.Done()
+			}()
+
 			// check and patch cronjobs
-			if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
-				sLogger.Error().
-					Err(err).
-					Str("namespace", n.Name).
-					Str("object", "cronjob").
-					Msg("suspended cronjobs conformity checks failed")
-			}
+			go func() {
+				if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
+					sLogger.Error().
+						Err(err).
+						Str("namespace", n.Name).
+						Str("object", "cronjob").
+						Msg("suspended cronjobs conformity checks failed")
+				}
+				wg.Done()
+			}()
+
 			// check and patch statefulsets
-			if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
-				sLogger.Error().
-					Err(err).
-					Str("namespace", n.Name).
-					Str("object", "statefulset").
-					Msg("suspended steatfulsets conformity checks failed")
-			}
+			go func() {
+				if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
+					sLogger.Error().
+						Err(err).
+						Str("namespace", n.Name).
+						Str("object", "statefulset").
+						Msg("suspended steatfulsets conformity checks failed")
+				}
+				wg.Done()
+			}()
 		default:
 			errMsg := fmt.Sprintf("state %s is not a supported state", desiredState)
 			sLogger.Error().
@@ -152,6 +178,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				Str("namespace", n.Name).
 				Msg("desired state cannot be recognised")
 		}
+		wg.Wait()
 		eng.Mutex.Unlock()
 	}
 }
