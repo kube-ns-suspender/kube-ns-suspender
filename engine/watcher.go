@@ -30,19 +30,21 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		// clean the watchlist
 		// eng.Wl = Watchlist{}
 		// look for new namespaces to watch
+		var wllen int
 		for _, n := range ns.Items {
 			if _, ok := n.Annotations["kube-ns-suspender/desiredState"]; ok {
 				// if !isNamespaceInWatchlist(n, eng.Wl) {
 				// 	eng.Wl = append(eng.Wl, n)
 				// }
 				eng.Wl <- n
+				wllen++
 			}
 		}
 		// update the watchlist length metric
 		wlLogger.Debug().
-			Msgf("channel length: %d", len(eng.Wl))
+			Msgf("channel length: %d", wllen)
 
-		eng.MetricsServ.WatchlistLength.Set(float64(len(eng.Wl)))
+		eng.MetricsServ.WatchlistLength.Set(float64(wllen))
 		wlLogger.Debug().
 			Int("inventory id", id).
 			Msg("namespaces inventory ended")
