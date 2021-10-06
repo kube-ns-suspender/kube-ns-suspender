@@ -38,8 +38,11 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 				eng.Wl <- n
 			}
 		}
-		// update the watchlist lenght metric
-		eng.MetricsServ.WatchlistLenght.Set(float64(len(eng.Wl)))
+		// update the watchlist length metric
+		wlLogger.Debug().
+			Msgf("channel length: %d", len(eng.Wl))
+
+		eng.MetricsServ.WatchlistLength.Set(float64(len(eng.Wl)))
 		wlLogger.Debug().
 			Int("inventory id", id).
 			Msg("namespaces inventory ended")

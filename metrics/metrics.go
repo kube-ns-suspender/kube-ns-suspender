@@ -12,7 +12,7 @@ import (
 type Server struct {
 	Addr                    string
 	NotRespondingList       map[string]bool
-	WatchlistLenght, Uptime prometheus.Gauge
+	WatchlistLength, Uptime prometheus.Gauge
 }
 
 // Init initializes the metrics
@@ -22,15 +22,15 @@ func Init() *Server {
 			Name: "kube_ns_suspender_uptime_sec",
 			Help: "kube-ns-suspender uptime, in seconds.",
 		}),
-		WatchlistLenght: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "kube_ns_suspender_watchlist_lenght",
+		WatchlistLength: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "kube_ns_suspender_watchlist_length",
 			Help: "Number of namespaces that are in the watchlist",
 		}),
 	}
 
 	prometheus.MustRegister(
 		s.Uptime,
-		s.WatchlistLenght,
+		s.WatchlistLength,
 	)
 
 	// Start uptime counter
