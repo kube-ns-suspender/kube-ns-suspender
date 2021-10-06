@@ -5,6 +5,7 @@ import (
 	"flag"
 
 	"github.com/govirtuo/kube-ns-suspender/engine"
+	"github.com/govirtuo/kube-ns-suspender/metrics"
 	"github.com/rs/zerolog/log"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -17,11 +18,23 @@ func main() {
 	flag.StringVar(&loglvl, "loglevel", "debug", "Log level")
 	flag.Parse()
 
+	// Create the engine
 	eng, err := engine.New(loglvl)
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot create new engine")
 	}
 	eng.Logger.Info().Msg("kube-ns-suspender launched")
+
+	// Create metrics server
+	eng.MetricsServ = *metrics.Init()
+
+	// Start metrics server
+	go func() {
+		if err := eng.MetricsServ.Start(); err != nil {
+			eng.Logger.Fatal().Err(err).Msg("metrics server failed")
+		}
+	}()
+	eng.Logger.Debug().Msg("metrics server successfully created")
 
 	// create the in-cluster config
 	config, err := rest.InClusterConfig()

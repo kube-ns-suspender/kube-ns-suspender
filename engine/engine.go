@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/govirtuo/kube-ns-suspender/metrics"
 	"github.com/rs/zerolog"
 	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
@@ -23,9 +24,10 @@ const (
 type Watchlist []v1.Namespace
 
 type Engine struct {
-	Logger zerolog.Logger
-	Mutex  sync.Mutex
-	Wl     Watchlist
+	Logger      zerolog.Logger
+	Mutex       sync.Mutex
+	Wl          Watchlist
+	MetricsServ metrics.Server
 }
 
 // New returns a new engine instance
