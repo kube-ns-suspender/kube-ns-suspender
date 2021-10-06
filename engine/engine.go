@@ -13,14 +13,16 @@ import (
 const (
 	running   = "Running"
 	suspended = "Suspended"
+	forced    = "RunningForced"
 )
 
 type Engine struct {
-	Logger      zerolog.Logger
-	Mutex       sync.Mutex
-	Wl          chan v1.Namespace
-	MetricsServ metrics.Server
-	TZ          *time.Location
+	Logger               zerolog.Logger
+	Mutex                sync.Mutex
+	Wl                   chan v1.Namespace
+	MetricsServ          metrics.Server
+	TZ                   *time.Location
+	RunningForcedHistory map[string]time.Time
 }
 
 // New returns a new engine instance

@@ -13,8 +13,12 @@ import (
 )
 
 func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
+	eng.Mutex.Lock()
 	sLogger := eng.Logger.With().
 		Str("routine", "suspender").Logger()
+	eng.RunningForcedHistory = make(map[string]time.Time)
+	eng.Mutex.Unlock()
+
 	sLogger.Info().
 		Msg("suspender started")
 	// wait a bit for the watcher to populate the first watchlist
@@ -36,7 +40,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					Msg("cannot parse suspend time")
 			}
 
-			if suspend <= now && n.Annotations["kube-ns-suspender/desiredState"] != suspended {
+			if n.Annotations["kube-ns-suspender/desiredState"] == running && suspend <= now {
 				// patch the namespace
 				err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 					result, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
@@ -51,13 +55,48 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					sLogger.Fatal().
 						Err(err).
 						Str("namespace", n.Name).
-						Msg("cannot get namespace object")
+						Msg("cannot update namespace object")
 				}
 				sLogger.Info().
 					Str("namespace", n.Name).
 					Msgf("suspended namespace %s based on suspend time", n.Name)
 				n.Annotations["kube-ns-suspender/desiredState"] = suspended
 
+			}
+		}
+
+		if n.Annotations["kube-ns-suspender/desiredState"] == forced {
+			if creationTime, ok := eng.RunningForcedHistory[n.Name]; ok {
+				if time.Since(creationTime) >= time.Minute {
+					// suspend the namespace
+					err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+						result, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+						result.Annotations["kube-ns-suspender/desiredState"] = suspended
+						_, err = cs.CoreV1().Namespaces().Update(ctx, result, metav1.UpdateOptions{})
+						return err
+					})
+					if err != nil {
+						sLogger.Fatal().
+							Err(err).
+							Str("namespace", n.Name).
+							Msg("cannot update namespace object")
+					}
+					n.Annotations["kube-ns-suspender/desiredState"] = suspended
+
+					// remove the namespace from the map
+					delete(eng.RunningForcedHistory, n.Name)
+					sLogger.Info().
+						Str("namespace", n.Name).
+						Msgf("suspended namespace %s based on uptime", n.Name)
+				}
+			} else {
+				eng.RunningForcedHistory[n.Name] = time.Now()
+				sLogger.Info().
+					Str("namespace", n.Name).
+					Msgf("unpausing %s", n.Name)
 			}
 		}
 
@@ -96,7 +135,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 		var wg sync.WaitGroup
 		switch desiredState {
-		case running:
+		case running, forced:
 			wg.Add(3)
 			// check and patch deployments
 			go func() {

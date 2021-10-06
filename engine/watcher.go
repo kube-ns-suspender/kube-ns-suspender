@@ -11,8 +11,11 @@ import (
 // Watcher periodically watches the namespaces, and add them to the engine
 // watchlist if they have the 'kube-ns-suspender/desiredState' set.
 func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
+	eng.Mutex.Lock()
 	wlLogger := eng.Logger.With().
 		Str("routine", "watcher").Logger()
+	eng.Mutex.Unlock()
+
 	wlLogger.Info().Msg("watcher started")
 
 	var id int
