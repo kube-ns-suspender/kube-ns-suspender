@@ -2,6 +2,8 @@ package engine
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"sync"
@@ -107,6 +109,8 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					sLogger.Error().Err(err).Msg("suspended conformity checks failed")
 				}
 			default:
+				errMsg := fmt.Sprintf("state %s is not a supported state", desiredState)
+				sLogger.Error().Err(errors.New(errMsg)).Msg("desired state cannot be recognised")
 			}
 		}
 		eng.Mutex.Unlock()
