@@ -35,21 +35,21 @@ func main() {
 			eng.Logger.Fatal().Err(err).Msg("metrics server failed")
 		}
 	}()
-	eng.Logger.Debug().Msg("metrics server successfully created")
+	eng.Logger.Info().Msg("metrics server successfully created")
 
 	// create the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		eng.Logger.Fatal().Err(err).Msg("cannot create in-cluster configuration")
 	}
-	eng.Logger.Debug().Msg("in-cluster configuration successfully created")
+	eng.Logger.Info().Msg("in-cluster configuration successfully created")
 
 	// create the clientset
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		eng.Logger.Fatal().Err(err).Msg("cannot create the clientset")
 	}
-	eng.Logger.Debug().Msg("clientset successfully created")
+	eng.Logger.Info().Msg("clientset successfully created")
 
 	ctx := context.Background()
 	go eng.Watcher(ctx, clientset)
