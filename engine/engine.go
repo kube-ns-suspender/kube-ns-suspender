@@ -71,8 +71,8 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		}
 		// update the watchlist lenght metric
 		eng.MetricsServ.WatchlistLenght.Set(float64(len(eng.Wl)))
-		eng.Mutex.Unlock()
 		wlLogger.Debug().Int("inventory id", id).Msg("namespaces inventory ended")
+		eng.Mutex.Unlock()
 		id++
 		time.Sleep(15 * time.Second)
 	}
@@ -169,12 +169,12 @@ func checkSuspendedConformity(ctx context.Context, l zerolog.Logger, deployments
 // patchDeploymentReplicas updates the number of replicas of a given deployment
 func patchDeploymentReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, d string, repl int) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		result, err := cs.AppsV1().Deployments(ns).Get(context.TODO(), d, metav1.GetOptions{})
+		result, err := cs.AppsV1().Deployments(ns).Get(ctx, d, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
 		result.Spec.Replicas = flip(int32(repl))
-		_, err = cs.AppsV1().Deployments(ns).Update(context.TODO(), result, metav1.UpdateOptions{})
+		_, err = cs.AppsV1().Deployments(ns).Update(ctx, result, metav1.UpdateOptions{})
 		return err
 	})
 	if err != nil {
