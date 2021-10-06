@@ -59,7 +59,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			}
 		}
 
-		// for _, n := range eng.Wl {
 		// get the namespace desired status
 		var desiredState string
 		ns, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
@@ -164,7 +163,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				Str("namespace", n.Name).
 				Msg("desired state cannot be recognised")
 		}
-		// }
 		eng.Mutex.Unlock()
 		time.Sleep(15 * time.Second)
 	}
