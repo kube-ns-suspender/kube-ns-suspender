@@ -15,7 +15,7 @@ type Server struct {
 	WatchlistLenght, Uptime prometheus.Gauge
 }
 
-// Init initialize the metrics
+// Init initializes the metrics
 func Init() *Server {
 	s := Server{
 		Uptime: prometheus.NewGauge(prometheus.GaugeOpts{
@@ -50,7 +50,7 @@ func (s *Server) Start() error {
 	return srv.ListenAndServe()
 }
 
-// Goroutine to update the Uptime metric
+// goroutine to update the Uptime metric
 func (s *Server) uptimeCounter() {
 	for {
 		s.Uptime.Add(5)

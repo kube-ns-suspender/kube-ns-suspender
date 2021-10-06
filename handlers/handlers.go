@@ -18,7 +18,7 @@ func HandleFunc() *mux.Router {
 	return r
 }
 
-// notFoundPage set the response header to 404 status and prints an error message.
+// notFoundPage sets the response header to 404 status and prints an error message.
 func notFoundPage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 	fmt.Fprint(w, "<h1>404 page not found</h1>")

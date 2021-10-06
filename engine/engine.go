@@ -44,7 +44,7 @@ func New(loglvl string) (*Engine, error) {
 	return &e, nil
 }
 
-// watcher periodically watches the namespaces, and add them to the engine
+// Watcher periodically watches the namespaces, and add them to the engine
 // watchlist if they have the 'kube-ns-suspender/desiredState' set.
 func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 	wlLogger := eng.Logger.With().Str("routine", "watcher").Logger()
@@ -91,7 +91,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			// get the namespace desired status
 			desiredState := n.Annotations["kube-ns-suspender/desiredState"]
 
-			// get the deployments of the namespace
+			// get deployments of the namespace
 			deployments, err := cs.AppsV1().Deployments(n.Name).List(ctx, metav1.ListOptions{})
 			if err != nil {
 				sLogger.Fatal().Err(err).Str("namespace", n.Name).Msg("cannot list deployments")
