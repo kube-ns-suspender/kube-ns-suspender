@@ -94,7 +94,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				Msg("cannot list statefulsets")
 		}
 
-		// TODO: add sync.WaitGroup here to // the work on each kind of object
 		var wg sync.WaitGroup
 		switch desiredState {
 		case running:
