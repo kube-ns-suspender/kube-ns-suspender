@@ -28,14 +28,10 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 
 		eng.Mutex.Lock()
 		// clean the watchlist
-		// eng.Wl = Watchlist{}
 		// look for new namespaces to watch
 		var wllen int
 		for _, n := range ns.Items {
 			if _, ok := n.Annotations["kube-ns-suspender/desiredState"]; ok {
-				// if !isNamespaceInWatchlist(n, eng.Wl) {
-				// 	eng.Wl = append(eng.Wl, n)
-				// }
 				eng.Wl <- n
 				wllen++
 			}
