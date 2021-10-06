@@ -35,7 +35,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					Msg("cannot parse suspend time")
 			}
 
-			if suspend <= now && n.Annotations["kube-ns-suspender/desiredStatus"] != suspended {
+			if suspend <= now && n.Annotations["kube-ns-suspender/desiredState"] != suspended {
 				// patch the namespace
 				err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 					result, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
@@ -55,24 +55,13 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				sLogger.Info().
 					Str("namespace", n.Name).
 					Msgf("suspended namespace %s based on suspend time", n.Name)
+				n.Annotations["kube-ns-suspender/desiredState"] = suspended
 
 			}
 		}
 
 		// get the namespace desired status
-		var desiredState string
-		ns, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
-		if err != nil {
-			sLogger.Fatal().
-				Err(err).
-				Str("namespace", n.Name).
-				Msg("cannot get namespace object")
-			// use non updated value, loss one loop but don't crash
-			desiredState = n.Annotations["kube-ns-suspender/desiredState"]
-		} else {
-			// use updated value
-			desiredState = ns.Annotations["kube-ns-suspender/desiredState"]
-		}
+		desiredState := n.Annotations["kube-ns-suspender/desiredState"]
 
 		// get deployments of the namespace
 		deployments, err := cs.AppsV1().Deployments(n.Name).List(ctx, metav1.ListOptions{})
@@ -164,6 +153,5 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				Msg("desired state cannot be recognised")
 		}
 		eng.Mutex.Unlock()
-		time.Sleep(15 * time.Second)
 	}
 }
