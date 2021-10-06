@@ -6,9 +6,9 @@ metadata:
   labels:
     app: misc
   annotations:
-    kube-ns-suspender/originalReplicas: "1"
+    kube-ns-suspender/originalReplicas: "3"
 spec:
-  replicas: 0
+  replicas: 3
   selector:
     matchLabels:
       app: misc

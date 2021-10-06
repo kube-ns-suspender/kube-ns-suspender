@@ -106,6 +106,12 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				sLogger.Fatal().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("cannot list cronjobs")
 			}
 
+			// get statefulsets of the namespace
+			statefulsets, err := cs.AppsV1().StatefulSets(n.Name).List(ctx, metav1.ListOptions{})
+			if err != nil {
+				sLogger.Fatal().Err(err).Str("namespace", n.Name).Str("object", "statefulset").Msg("cannot list statefulsets")
+			}
+
 			// TODO: add sync.WaitGroup here to // the work on each kind of object
 			switch desiredState {
 			case running:
@@ -117,6 +123,10 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				if err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
 					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("running cronjobs conformity checks failed")
 				}
+				// check and patch statefulsets
+				if err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
+					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "statefulset").Msg("running steatfulsets conformity checks failed")
+				}
 			case suspended:
 				// check and patch deployments
 				if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
@@ -124,7 +134,11 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				}
 				// check and patch cronjobs
 				if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
-					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("running cronjobs conformity checks failed")
+					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "cronjob").Msg("suspended cronjobs conformity checks failed")
+				}
+				// check and patch statefulsets
+				if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
+					sLogger.Error().Err(err).Str("namespace", n.Name).Str("object", "statefulset").Msg("suspended steatfulsets conformity checks failed")
 				}
 			default:
 				errMsg := fmt.Sprintf("state %s is not a supported state", desiredState)
@@ -213,6 +227,41 @@ func checkSuspendedCronjobsConformity(ctx context.Context, l zerolog.Logger, cro
 	return nil
 }
 
+func checkRunningStatefulsetsConformity(ctx context.Context, l zerolog.Logger, statefulsets []appsv1.StatefulSet, cs *kubernetes.Clientset, ns string) error {
+	for _, ss := range statefulsets {
+		repl := int(*ss.Spec.Replicas)
+		if repl == 0 {
+			// get the desired number of replicas
+			repl, err := strconv.Atoi(ss.Annotations["kube-ns-suspender/originalReplicas"])
+			if err != nil {
+				return err
+			}
+
+			l.Debug().Str("namespace", ns).Str("statefulset", ss.Name).Msgf("scaling %s from 0 to %d replicas", ss.Name, repl)
+			// patch the statefulset
+			if err := patchStatefulsetReplicas(ctx, cs, ns, ss.Name, repl); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func checkSuspendedStatefulsetsConformity(ctx context.Context, l zerolog.Logger, statefulsets []appsv1.StatefulSet, cs *kubernetes.Clientset, ns string) error {
+	for _, ss := range statefulsets {
+		repl := int(*ss.Spec.Replicas)
+		if repl != 0 {
+			// TODO: what about fixing the annotation original Replicas here ?
+			l.Debug().Str("namespace", ns).Str("statefulset", ss.Name).Msgf("scaling %s from %d to 0 replicas", ss.Name, repl)
+			// patch the deployment
+			if err := patchStatefulsetReplicas(ctx, cs, ns, ss.Name, 0); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // patchDeploymentReplicas updates the number of replicas of a given deployment
 func patchDeploymentReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, d string, repl int) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -239,6 +288,23 @@ func patchCronjobSuspend(ctx context.Context, cs *kubernetes.Clientset, ns, c st
 		}
 		result.Spec.Suspend = &suspend
 		_, err = cs.BatchV1beta1().CronJobs(ns).Update(ctx, result, metav1.UpdateOptions{})
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// patchStatefulsetSuspend updates the number of replicas of a given statefulset
+func patchStatefulsetReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, ss string, repl int) error {
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		result, err := cs.AppsV1().StatefulSets(ns).Get(ctx, ss, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		result.Spec.Replicas = flip(int32(repl))
+		_, err = cs.AppsV1().StatefulSets(ns).Update(ctx, result, metav1.UpdateOptions{})
 		return err
 	})
 	if err != nil {
