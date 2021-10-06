@@ -27,7 +27,6 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		}
 
 		eng.Mutex.Lock()
-		// clean the watchlist
 		// look for new namespaces to watch
 		var wllen int
 		for _, n := range ns.Items {
