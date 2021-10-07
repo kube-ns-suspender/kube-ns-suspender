@@ -30,6 +30,7 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		}
 
 		eng.Mutex.Lock()
+<<<<<<< HEAD
 		// look for new namespaces to watch
 		var wllen int
 		for _, n := range ns.Items {
@@ -46,6 +47,43 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		wlLogger.Debug().
 			Int("inventory id", id).
 			Msg("namespaces inventory ended")
+=======
+		// create fresh new variables for metrics
+		var wllen, runningNs, suspendedNs, runningForcedNs, unknownNs int
+		// look for new namespaces to watch
+		for _, n := range ns.Items {
+			if state, ok := n.Annotations["kube-ns-suspender/desiredState"]; ok {
+				eng.Wl <- n
+
+				// increment variables for metrics
+				wllen++
+				switch state {
+				case running:
+					runningNs++
+				case forced:
+					runningForcedNs++
+				case suspended:
+					suspendedNs++
+				default:
+					unknownNs++
+				}
+			}
+		}
+		// update metrics
+		wlLogger.Debug().Msgf("channel length: %d", wllen)
+		eng.MetricsServ.WatchlistLength.Set(float64(wllen))
+
+		wlLogger.Debug().Msgf("running namespaces: %d", runningNs)
+		eng.MetricsServ.NumRunningNamspaces.Set(float64(runningNs))
+
+		wlLogger.Debug().Msgf("suspended namespaces: %d", suspendedNs)
+		eng.MetricsServ.NumSuspendedNamspaces.Set(float64(suspendedNs))
+
+		wlLogger.Debug().Msgf("running forced namespaces: %d", runningForcedNs)
+		eng.MetricsServ.NumRunningForcedNamspaces.Set(float64(runningForcedNs))
+
+		wlLogger.Debug().Int("inventory id", id).Msg("namespaces inventory ended")
+>>>>>>> main
 		eng.Mutex.Unlock()
 		id++
 		time.Sleep(30 * time.Second)
