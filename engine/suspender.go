@@ -21,8 +21,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 	sLogger.Info().
 		Msg("suspender started")
-	// wait a bit for the watcher to populate the first watchlist
-	time.Sleep(100 * time.Millisecond)
 
 	for {
 		// wait for the next namespace to check
