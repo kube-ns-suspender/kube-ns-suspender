@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: plop
+  annotations:
+    kube-ns-suspender/desiredState: Running
+    kube-ns-suspender/suspendAt: "5:45PM"
