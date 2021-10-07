@@ -5,7 +5,7 @@ on:
     branches:
       - main
     tags:
-      - "v*" # triggers only if push new tag version, like `0.8.4` or else
+      - "v*"
   pull_request:
     branches:
       - main
@@ -19,7 +19,7 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
         with:
-          fetch-depth: 0 # See: https://goreleaser.com/ci/actions/
+          fetch-depth: 0
 
       - name: Set up Go 1.17
         uses: actions/setup-go@v2
