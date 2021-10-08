@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"os"
+	"time"
 
 	"github.com/namsral/flag"
 
@@ -16,21 +17,23 @@ import (
 )
 
 func main() {
-	var loglvl, tz string
-	var watcherIdle int
+	var opt engine.Options
 	fs := flag.NewFlagSetWithEnvPrefix(os.Args[0], "KUBE_NS_SUSPENDER", 0)
-	fs.StringVar(&loglvl, "loglevel", "debug", "Log level")
-	fs.StringVar(&tz, "timezone", "Europe/Paris", "Timezone to use")
-	fs.IntVar(&watcherIdle, "watcheridle", 15, "Watcher idle duration (in seconds)")
+	fs.StringVar(&opt.LogLevel, "loglevel", "debug", "Log level")
+	fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
+	fs.IntVar(&opt.WatcherIdle, "watcheridle", 15, "Watcher idle duration (in seconds)")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}
 
 	// create the engine
-	eng, err := engine.New(loglvl, tz, watcherIdle)
+	eng, err := engine.New(opt)
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot create new engine")
 	}
+	eng.Logger.Debug().Msgf("timezone: %s", eng.TZ.String())
+	eng.Logger.Debug().Msgf("watcher idle: %s", time.Duration(eng.Options.WatcherIdle)*time.Second)
+	eng.Logger.Debug().Msgf("log level: %s", eng.Options.LogLevel)
 	eng.Logger.Info().Msg("kube-ns-suspender launched")
 
 	// create metrics server
