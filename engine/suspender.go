@@ -46,7 +46,14 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 						return err
 					}
 					result.Annotations["kube-ns-suspender/desiredState"] = suspended
-					_, err = cs.CoreV1().Namespaces().Update(ctx, result, metav1.UpdateOptions{})
+					var updateOpts metav1.UpdateOptions
+					// if the flag -dryrun is used, do not update resources
+					if eng.Options.DryRun {
+						updateOpts = metav1.UpdateOptions{
+							DryRun: append(updateOpts.DryRun, "All"),
+						}
+					}
+					_, err = cs.CoreV1().Namespaces().Update(ctx, result, updateOpts)
 					return err
 				})
 				if err != nil {
@@ -73,6 +80,13 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 							return err
 						}
 						result.Annotations["kube-ns-suspender/desiredState"] = suspended
+						var updateOpts metav1.UpdateOptions
+						// if the flag -dryrun is used, do not update resources
+						if eng.Options.DryRun {
+							updateOpts = metav1.UpdateOptions{
+								DryRun: append(updateOpts.DryRun, "All"),
+							}
+						}
 						_, err = cs.CoreV1().Namespaces().Update(ctx, result, metav1.UpdateOptions{})
 						return err
 					})
@@ -137,7 +151,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			wg.Add(3)
 			// check and patch deployments
 			go func() {
-				if err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
+				if err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
 						Str("namespace", n.Name).
@@ -149,7 +163,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 			// check and patch cronjobs
 			go func() {
-				if err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
+				if err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
 						Str("namespace", n.Name).
@@ -161,7 +175,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 			// check and patch statefulsets
 			go func() {
-				if err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
+				if err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
 						Str("namespace", n.Name).
@@ -174,7 +188,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			wg.Add(3)
 			// check and patch deployments
 			go func() {
-				if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name); err != nil {
+				if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
 						Str("namespace", n.Name).
@@ -186,7 +200,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 			// check and patch cronjobs
 			go func() {
-				if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
+				if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
 						Str("namespace", n.Name).
@@ -198,7 +212,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 			// check and patch statefulsets
 			go func() {
-				if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name); err != nil {
+				if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
 						Str("namespace", n.Name).

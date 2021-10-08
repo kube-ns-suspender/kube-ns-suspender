@@ -11,7 +11,7 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
-func checkRunningStatefulsetsConformity(ctx context.Context, l zerolog.Logger, statefulsets []appsv1.StatefulSet, cs *kubernetes.Clientset, ns string) error {
+func checkRunningStatefulsetsConformity(ctx context.Context, l zerolog.Logger, statefulsets []appsv1.StatefulSet, cs *kubernetes.Clientset, ns string, dr bool) error {
 	for _, ss := range statefulsets {
 		repl := int(*ss.Spec.Replicas)
 		if repl == 0 {
@@ -34,7 +34,7 @@ func checkRunningStatefulsetsConformity(ctx context.Context, l zerolog.Logger, s
 	return nil
 }
 
-func checkSuspendedStatefulsetsConformity(ctx context.Context, l zerolog.Logger, statefulsets []appsv1.StatefulSet, cs *kubernetes.Clientset, ns string) error {
+func checkSuspendedStatefulsetsConformity(ctx context.Context, l zerolog.Logger, statefulsets []appsv1.StatefulSet, cs *kubernetes.Clientset, ns string, dr bool) error {
 	for _, ss := range statefulsets {
 		repl := int(*ss.Spec.Replicas)
 		if repl != 0 {
