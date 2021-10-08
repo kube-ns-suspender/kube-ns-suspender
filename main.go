@@ -21,8 +21,9 @@ func main() {
 	fs := flag.NewFlagSetWithEnvPrefix(os.Args[0], "KUBE_NS_SUSPENDER", 0)
 	fs.StringVar(&opt.LogLevel, "loglevel", "debug", "Log level")
 	fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
-	fs.IntVar(&opt.WatcherIdle, "watcheridle", 15, "Watcher idle duration (in seconds)")
-	fs.BoolVar(&opt.DryRun, "dryrun", false, "Run in dry run mode")
+	fs.IntVar(&opt.WatcherIdle, "watcher-idle", 15, "Watcher idle duration (in seconds)")
+	fs.BoolVar(&opt.DryRun, "dry-run", false, "Run in dry run mode")
+	fs.BoolVar(&opt.NoKubeWarnings, "no-kube-warnings", false, "Disable Kubernetes warnings")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}
@@ -54,6 +55,11 @@ func main() {
 		eng.Logger.Fatal().Err(err).Msg("cannot create in-cluster configuration")
 	}
 	eng.Logger.Info().Msg("in-cluster configuration successfully created")
+
+	// disable k8s warnings
+	if eng.Options.NoKubeWarnings {
+		config.WarningHandler = rest.NoWarnings{}
+	}
 
 	// create the clientset
 	clientset, err := kubernetes.NewForConfig(config)
