@@ -27,25 +27,24 @@ type Engine struct {
 }
 
 type Options struct {
-	WatcherIdle int
+	WatcherIdle  int
+	LogLevel, TZ string
 }
 
 // New returns a new engine instance
-func New(loglvl, tz string, watcherIdle int) (*Engine, error) {
+func New(opt Options) (*Engine, error) {
 	var err error
 	e := Engine{
-		Logger: zerolog.New(os.Stderr).With().Timestamp().Logger(),
-		Wl:     make(chan v1.Namespace, 50),
-		Options: Options{
-			WatcherIdle: watcherIdle,
-		},
+		Logger:  zerolog.New(os.Stderr).With().Timestamp().Logger(),
+		Wl:      make(chan v1.Namespace, 50),
+		Options: opt,
 	}
-	e.TZ, err = time.LoadLocation(tz)
+	e.TZ, err = time.LoadLocation(e.Options.TZ)
 	if err != nil {
 		return nil, err
 	}
 
-	lvl, err := zerolog.ParseLevel(loglvl)
+	lvl, err := zerolog.ParseLevel(e.Options.LogLevel)
 	if err != nil {
 		return nil, err
 	}
