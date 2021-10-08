@@ -23,14 +23,22 @@ type Engine struct {
 	MetricsServ          metrics.Server
 	TZ                   *time.Location
 	RunningForcedHistory map[string]time.Time
+	Options              Options
+}
+
+type Options struct {
+	WatcherIdle int
 }
 
 // New returns a new engine instance
-func New(loglvl, tz string) (*Engine, error) {
+func New(loglvl, tz string, watcherIdle int) (*Engine, error) {
 	var err error
 	e := Engine{
 		Logger: zerolog.New(os.Stderr).With().Timestamp().Logger(),
 		Wl:     make(chan v1.Namespace, 50),
+		Options: Options{
+			WatcherIdle: watcherIdle,
+		},
 	}
 	e.TZ, err = time.LoadLocation(tz)
 	if err != nil {

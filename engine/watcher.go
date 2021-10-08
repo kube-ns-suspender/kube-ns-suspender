@@ -67,6 +67,6 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		wlLogger.Debug().Int("inventory id", id).Msg("namespaces inventory ended")
 		eng.Mutex.Unlock()
 		id++
-		time.Sleep(30 * time.Second)
+		time.Sleep(time.Duration(eng.Options.WatcherIdle) * time.Second)
 	}
 }
