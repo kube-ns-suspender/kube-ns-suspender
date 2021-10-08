@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
-	"flag"
+	"os"
+
+	"github.com/namsral/flag"
 
 	"github.com/govirtuo/kube-ns-suspender/engine"
 	"github.com/govirtuo/kube-ns-suspender/metrics"
@@ -15,12 +17,17 @@ import (
 
 func main() {
 	var loglvl, tz string
-	flag.StringVar(&loglvl, "loglevel", "debug", "Log level")
-	flag.StringVar(&tz, "timezone", "Europe/Paris", "Timezone to use")
-	flag.Parse()
+	var watcherIdle int
+	fs := flag.NewFlagSetWithEnvPrefix(os.Args[0], "KUBE_NS_SUSPENDER", 0)
+	fs.StringVar(&loglvl, "loglevel", "debug", "Log level")
+	fs.StringVar(&tz, "timezone", "Europe/Paris", "Timezone to use")
+	fs.IntVar(&watcherIdle, "watcheridle", 15, "Watcher idle duration (in seconds)")
+	if err := fs.Parse(os.Args[1:]); err != nil {
+		log.Fatal().Err(err).Msg("cannot parse flags")
+	}
 
 	// create the engine
-	eng, err := engine.New(loglvl, tz)
+	eng, err := engine.New(loglvl, tz, watcherIdle)
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot create new engine")
 	}
