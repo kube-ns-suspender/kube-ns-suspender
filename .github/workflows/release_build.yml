@@ -2,8 +2,6 @@ name: Release Go project
 
 on:
   push:
-    branches:
-      - main
     tags:
       - "v*"
 
