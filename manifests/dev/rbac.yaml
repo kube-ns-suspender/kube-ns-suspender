@@ -11,11 +11,9 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - pods
   - namespaces
   verbs:
   - get
-  - watch
   - list
   - update
 - apiGroups:
@@ -26,41 +24,16 @@ rules:
   - statefulsets
   verbs:
   - get
-  - watch
   - list
   - update
-  - patch
-- apiGroups:
-  - autoscaling
-  resources:
-  - horizontalpodautoscalers
-  verbs:
-  - get
-  - watch
-  - list
-  - update
-  - patch
 - apiGroups:
   - batch
   resources:
   - cronjobs
   verbs:
   - get
-  - watch
   - list
   - update
-  - patch
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - get
-  - create
-  - watch
-  - list
-  - update
-  - patch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
