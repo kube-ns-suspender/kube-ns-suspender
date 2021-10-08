@@ -17,4 +17,4 @@ spec:
       serviceAccountName: kube-ns-suspender
       containers:
       - name: kube-ns-suspender
-        image: eu.gcr.io/infra-269416/kube-ns-suspender
+        image: ghcr.io/govirtuo/kube-ns-suspender
