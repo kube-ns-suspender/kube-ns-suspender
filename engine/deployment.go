@@ -13,7 +13,7 @@ import (
 
 // checkRunningDeploymentsConformity verifies that all deployments within the namespace are
 // currently running
-func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string) error {
+func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string, dr bool) error {
 	for _, d := range deployments {
 		// debug: on
 		if d.Name == "kube-ns-suspender-depl" {
@@ -33,15 +33,17 @@ func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, de
 				Str("deployment", d.Name).
 				Msgf("scaling %s from 0 to %d replicas", d.Name, repl)
 			// patch the deployment
-			if err := patchDeploymentReplicas(ctx, cs, ns, d.Name, repl); err != nil {
-				return err
+			if !dr {
+				if err := patchDeploymentReplicas(ctx, cs, ns, d.Name, repl); err != nil {
+					return err
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string) error {
+func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string, dr bool) error {
 	for _, d := range deployments {
 		repl := int(*d.Spec.Replicas)
 		if repl != 0 {
@@ -50,9 +52,11 @@ func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, 
 				Str("namespace", ns).
 				Str("deployment", d.Name).
 				Msgf("scaling %s from %d to 0 replicas", d.Name, repl)
-			// patch the deployment
-			if err := patchDeploymentReplicas(ctx, cs, ns, d.Name, 0); err != nil {
-				return err
+			// patch the deployment if -dryrun is not set
+			if !dr {
+				if err := patchDeploymentReplicas(ctx, cs, ns, d.Name, 0); err != nil {
+					return err
+				}
 			}
 		}
 	}

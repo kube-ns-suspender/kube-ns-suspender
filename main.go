@@ -22,6 +22,7 @@ func main() {
 	fs.StringVar(&opt.LogLevel, "loglevel", "debug", "Log level")
 	fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
 	fs.IntVar(&opt.WatcherIdle, "watcheridle", 15, "Watcher idle duration (in seconds)")
+	fs.BoolVar(&opt.DryRun, "dryrun", false, "Run in dry run mode")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}

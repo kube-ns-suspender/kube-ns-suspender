@@ -10,7 +10,7 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
-func checkRunningCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string) error {
+func checkRunningCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string, dr bool) error {
 	for _, c := range cronjobs {
 		if *c.Spec.Suspend {
 			l.Info().
@@ -25,7 +25,7 @@ func checkRunningCronjobsConformity(ctx context.Context, l zerolog.Logger, cronj
 	return nil
 }
 
-func checkSuspendedCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string) error {
+func checkSuspendedCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string, dr bool) error {
 	for _, c := range cronjobs {
 		if !*c.Spec.Suspend {
 			l.Info().

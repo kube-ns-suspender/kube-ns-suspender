@@ -29,6 +29,7 @@ type Engine struct {
 type Options struct {
 	WatcherIdle  int
 	LogLevel, TZ string
+	DryRun       bool
 }
 
 // New returns a new engine instance
