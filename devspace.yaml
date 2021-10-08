@@ -5,9 +5,9 @@ vars:
 - name: REGISTRY_PASSWORD
   password: true
 - name: IMAGE
-  value: eu.gcr.io/infra-269416/kube-ns-suspender
+  value: ghcr.io/govirtuo/kube-ns-suspender
 pullSecrets:
-- registry: eu.gcr.io
+- registry: ghcr.io
   username: ${REGISTRY_USERNAME}
   password: ${REGISTRY_PASSWORD}
 
