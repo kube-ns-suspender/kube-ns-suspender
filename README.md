@@ -6,6 +6,8 @@ Kubernetes controller managing namespaces life cycle.
   - [Goal](#goal)
   - [Usage](#usage)
     - [Internals](#internals)
+      - [The watcher](#the-watcher)
+      - [The suspender](#the-suspender)
     - [Flags](#flags)
     - [Resources](#resources)
     - [States](#states)
