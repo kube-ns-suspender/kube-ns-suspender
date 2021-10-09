@@ -7,11 +7,11 @@ Kubernetes controller managing namespaces life cycle.
   - [Usage](#usage)
     - [Internals](#internals)
     - [Flags](#flags)
-    - [Objects](#objects)
+    - [Resources](#resources)
     - [States](#states)
     - [Annotations](#annotations)
       - [On namespaces](#on-namespaces)
-      - [On objects](#on-objects)
+      - [On resources](#on-resources)
         - [Deployments and Stateful Sets](#deployments-and-stateful-sets)
         - [Cronjobs](#cronjobs)
   - [Contributing](#contributing)
@@ -19,7 +19,7 @@ Kubernetes controller managing namespaces life cycle.
 
 ## Goal
 
-This controller watches the cluster's namespaces and "suspends" them by scaling to 0 some of the objects within those namespaces at a given time.
+This controller watches the cluster's namespaces and "suspends" them by scaling to 0 some of the resources within those namespaces at a given time.
 However, once a namespace is in a "suspended" state, it will not be restarted automatically the following day (or whatever). This allows to "reactivate" namespaces only when required, and reduce costs.
 
 ## Usage
@@ -32,9 +32,9 @@ However, once a namespace is in a "suspended" state, it will not be restarted au
 
 /* explain the different flags, the associated env vars... */
 
-### Objects
+### Resources
 
-Currently supported objects are:
+Currently supported resources are:
 
 * deployments
 * stateful sets
@@ -44,8 +44,8 @@ Currently supported objects are:
 
 Namespaces watched by `kube-ns-suspender` can be in 3 differents states:
 
-* Running: the namespace is "up", and all the objects have the desired number of replicas.
-* Suspended: the namespace is "paused", and all the supported objects are scaled down to 0 or suspended.
+* Running: the namespace is "up", and all the resources have the desired number of replicas.
+* Suspended: the namespace is "paused", and all the supported resources are scaled down to 0 or suspended.
 * Running Forced: the namespace has been suspended, and then reactivated manually. It will be "running" for a pre-defined duration then will go back to the "suspended" state.
 
 ### Annotations
@@ -61,7 +61,7 @@ In order for a namespace to be watched by the controller, it needs to have the `
 To be suspended at a given time, a namespace must have the annotation `kube-ns-suspender/suspendAt` set to a valid value.
 Valid values are any values that match the [`time.Kitchen`](https://pkg.go.dev/time#pkg-constants) time format, for example: `8:15PM`, `12:45AM`...
 
-#### On objects
+#### On resources
 
 ##### Deployments and Stateful Sets
 
