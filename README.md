@@ -26,7 +26,18 @@ However, once a namespace is in a "suspended" state, it will not be restarted au
 
 ### Internals
 
-/* do a pretty scheme about the internals */
+This controller can be splitted into 2 parts:
+
+* The watcher
+* The suspender
+
+#### The watcher
+
+The watcher function is charged to check every X seconds (X being set by the flag `-watcher-idle` or by the `KUBE_NS_SUSPENDER_WATCHER_IDLE` environement variable) all the namespaces. When it found namespace that have the `kube-ns-suspender/desiredState` annotation, it sends it to the suspender. It also manages all the metrics that are exposed about the watched namespaces states.
+
+#### The suspender
+
+The suspender function does all the work of reading namespaces/resources annotations, and (un)suspending them when required.
 
 ### Flags
 
@@ -50,6 +61,8 @@ Namespaces watched by `kube-ns-suspender` can be in 3 differents states:
 
 ### Annotations
 
+Annotations are employed to save the original state of a resource.
+
 #### On namespaces
 
 In order for a namespace to be watched by the controller, it needs to have the `kube-ns-suspender/desiredState` annotation set to any of the supported values, which are:
@@ -65,7 +78,11 @@ Valid values are any values that match the [`time.Kitchen`](https://pkg.go.dev/t
 
 ##### Deployments and Stateful Sets
 
+As those resources have a `spec.replicas` value, they must have a `kube-ns-suspender/originalReplicas` annotation that must be the same as the `spec.replicas` value. This annotation will be used when a resource will be "unsuspended" to set the original number of replicas.
+
 ##### Cronjobs
+
+Cronjobs have a `spec.suspend` value that indicates if they must be runned or not. As this value is a boolean, **no other annotations are required**.
 
 ## Contributing
 
