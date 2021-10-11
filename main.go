@@ -20,7 +20,7 @@ func main() {
 	var opt engine.Options
 	fs := flag.NewFlagSetWithEnvPrefix(os.Args[0], "KUBE_NS_SUSPENDER", 0)
 	fs.StringVar(&opt.LogLevel, "loglevel", "debug", "Log level")
-	fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
+	// fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
 	fs.IntVar(&opt.WatcherIdle, "watcher-idle", 15, "Watcher idle duration (in seconds)")
 	fs.BoolVar(&opt.DryRun, "dry-run", false, "Run in dry run mode")
 	fs.BoolVar(&opt.NoKubeWarnings, "no-kube-warnings", false, "Disable Kubernetes warnings")
@@ -33,7 +33,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot create new engine")
 	}
-	eng.Logger.Debug().Msgf("timezone: %s", eng.TZ.String())
+	// eng.Logger.Debug().Msgf("timezone: %s", eng.TZ.String())
 	eng.Logger.Debug().Msgf("watcher idle: %s", time.Duration(eng.Options.WatcherIdle)*time.Second)
 	eng.Logger.Debug().Msgf("log level: %s", eng.Options.LogLevel)
 	eng.Logger.Info().Msg("kube-ns-suspender launched")

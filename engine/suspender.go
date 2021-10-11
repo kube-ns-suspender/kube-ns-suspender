@@ -30,7 +30,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		if suspendAt, ok := n.Annotations["kube-ns-suspender/suspendAt"]; ok {
 			// suspendAt is specified, so we need to check if we have to suspend
 			// the namespace
-			now, suspend, err := getTimes(suspendAt, eng.TZ)
+			now, suspend, err := getTimes(suspendAt)
 			if err != nil {
 				sLogger.Fatal().
 					Err(err).
