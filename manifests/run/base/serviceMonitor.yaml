@@ -1,0 +1,12 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-ns-suspender
+  namespace: kube-ns-suspender
+spec:
+  selector:
+    matchLabels:
+      app: kube-ns-suspender
+  endpoints:
+  - port: metrics
+    path: /metrics
