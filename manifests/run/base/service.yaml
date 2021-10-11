@@ -1,0 +1,13 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: kube-ns-suspender
+  namespace: kube-ns-suspender
+  labels:
+    app: kube-ns-suspender
+spec:
+  selector:
+    app: kube-ns-suspender
+  ports:
+  - name: metrics
+    port: 2112
