@@ -49,9 +49,9 @@ The suspender function does all the work of reading namespaces/resources annotat
 
 Currently supported resources are:
 
-* deployments
-* stateful sets
-* cronjobs
+* [deployments](#deployments-and-stateful-sets)
+* [stateful sets](#deployments-and-stateful-sets)
+* [cronjobs](#cronjobs)
 
 ### States
 
