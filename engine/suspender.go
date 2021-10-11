@@ -72,7 +72,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 		if n.Annotations["kube-ns-suspender/desiredState"] == forced {
 			if creationTime, ok := eng.RunningForcedHistory[n.Name]; ok {
-				if time.Since(creationTime.Local()) >= 30*time.Minute {
+				if time.Since(creationTime.Local()) >= 10*time.Minute {
 					// suspend the namespace
 					err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 						result, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
