@@ -111,7 +111,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					Msgf("unpausing %s", n.Name)
 				sLogger.Info().
 					Str("namespace", n.Name).
-					Msgf("%s will be automatically suspended at %s", n.Name, eng.RunningForcedHistory[n.Name].Add(30*time.Minute))
+					Msgf("%s will be automatically suspended at %s", n.Name, eng.RunningForcedHistory[n.Name].Add(10*time.Minute))
 			}
 		}
 
