@@ -70,6 +70,11 @@ func patchDeploymentReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, 
 		if err != nil {
 			return err
 		}
+		// if we want 0 replicas, it means that we are suspending the namespace,
+		// so before adjusting the replicas count, we want to save it for later
+		if repl == 0 {
+			result.Annotations["kube-ns-suspender/originalReplicas"] = strconv.Itoa(int(*result.Spec.Replicas))
+		}
 		result.Spec.Replicas = flip(int32(repl))
 		_, err = cs.AppsV1().Deployments(ns).Update(ctx, result, metav1.UpdateOptions{})
 		return err
