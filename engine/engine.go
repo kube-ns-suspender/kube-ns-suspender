@@ -17,11 +17,10 @@ const (
 )
 
 type Engine struct {
-	Logger      zerolog.Logger
-	Mutex       sync.Mutex
-	Wl          chan v1.Namespace
-	MetricsServ metrics.Server
-	// TZ                   *time.Location
+	Logger               zerolog.Logger
+	Mutex                sync.Mutex
+	Wl                   chan v1.Namespace
+	MetricsServ          metrics.Server
 	RunningForcedHistory map[string]time.Time
 	Options              Options
 }
@@ -41,10 +40,6 @@ func New(opt Options) (*Engine, error) {
 		Wl:      make(chan v1.Namespace, 50),
 		Options: opt,
 	}
-	// e.TZ, err = time.LoadLocation(e.Options.TZ)
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	lvl, err := zerolog.ParseLevel(e.Options.LogLevel)
 	if err != nil {
