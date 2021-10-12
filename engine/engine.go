@@ -27,9 +27,9 @@ type Engine struct {
 }
 
 type Options struct {
-	WatcherIdle int
-	LogLevel    string
-	// TZ                     string
+	WatcherIdle            int
+	LogLevel               string
+	TZ                     string
 	DryRun, NoKubeWarnings bool
 }
 
