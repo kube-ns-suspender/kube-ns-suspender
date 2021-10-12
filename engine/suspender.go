@@ -30,7 +30,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		if suspendAt, ok := n.Annotations["kube-ns-suspender/suspendAt"]; ok {
 			// suspendAt is specified, so we need to check if we have to suspend
 			// the namespace
-			now, suspend, err := getTimes(suspendAt, eng.TZ)
+			now, suspend, err := getTimes(suspendAt)
 			if err != nil {
 				sLogger.Fatal().
 					Err(err).
@@ -72,7 +72,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 		if n.Annotations["kube-ns-suspender/desiredState"] == forced {
 			if creationTime, ok := eng.RunningForcedHistory[n.Name]; ok {
-				if time.Since(creationTime) >= 4*time.Hour {
+				if time.Since(creationTime.Local()) >= 10*time.Minute {
 					// suspend the namespace
 					err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 						result, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
@@ -105,10 +105,13 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 						Msgf("suspended namespace %s based on uptime", n.Name)
 				}
 			} else {
-				eng.RunningForcedHistory[n.Name] = time.Now()
+				eng.RunningForcedHistory[n.Name] = time.Now().Local()
 				sLogger.Info().
 					Str("namespace", n.Name).
 					Msgf("unpausing %s", n.Name)
+				sLogger.Info().
+					Str("namespace", n.Name).
+					Msgf("%s will be automatically suspended at %s", n.Name, eng.RunningForcedHistory[n.Name].Add(10*time.Minute))
 			}
 		}
 

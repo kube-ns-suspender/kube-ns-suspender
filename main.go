@@ -18,6 +18,7 @@ import (
 
 func main() {
 	var opt engine.Options
+	var err error
 	fs := flag.NewFlagSetWithEnvPrefix(os.Args[0], "KUBE_NS_SUSPENDER", 0)
 	fs.StringVar(&opt.LogLevel, "loglevel", "debug", "Log level")
 	fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
@@ -28,12 +29,18 @@ func main() {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}
 
+	// set the local timezone
+	time.Local, err = time.LoadLocation(opt.TZ)
+	if err != nil {
+		log.Fatal().Err(err).Msg("cannot load timezone")
+	}
+
 	// create the engine
 	eng, err := engine.New(opt)
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot create new engine")
 	}
-	eng.Logger.Debug().Msgf("timezone: %s", eng.TZ.String())
+	eng.Logger.Debug().Msgf("timezone: %s", time.Local.String())
 	eng.Logger.Debug().Msgf("watcher idle: %s", time.Duration(eng.Options.WatcherIdle)*time.Second)
 	eng.Logger.Debug().Msgf("log level: %s", eng.Options.LogLevel)
 	eng.Logger.Info().Msg("kube-ns-suspender launched")

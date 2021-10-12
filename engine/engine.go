@@ -21,14 +21,14 @@ type Engine struct {
 	Mutex                sync.Mutex
 	Wl                   chan v1.Namespace
 	MetricsServ          metrics.Server
-	TZ                   *time.Location
 	RunningForcedHistory map[string]time.Time
 	Options              Options
 }
 
 type Options struct {
 	WatcherIdle            int
-	LogLevel, TZ           string
+	LogLevel               string
+	TZ                     string
 	DryRun, NoKubeWarnings bool
 }
 
@@ -39,10 +39,6 @@ func New(opt Options) (*Engine, error) {
 		Logger:  zerolog.New(os.Stderr).With().Timestamp().Logger(),
 		Wl:      make(chan v1.Namespace, 50),
 		Options: opt,
-	}
-	e.TZ, err = time.LoadLocation(e.Options.TZ)
-	if err != nil {
-		return nil, err
 	}
 
 	lvl, err := zerolog.ParseLevel(e.Options.LogLevel)
@@ -57,14 +53,14 @@ func flip(i int32) *int32 {
 	return &i
 }
 
-func getTimes(suspendAt string, tz *time.Location) (int, int, error) {
+func getTimes(suspendAt string) (int, int, error) {
 	suspendTime, err := time.Parse(time.Kitchen, suspendAt)
 	if err != nil {
 		return 0, 0, err
 	}
 	suspendTimeInt := suspendTime.Minute() + suspendTime.Hour()*60
 
-	now := time.Now().In(tz)
+	now := time.Now().Local()
 	nowInt := now.Minute() + now.Hour()*60
 	return nowInt, suspendTimeInt, nil
 }
