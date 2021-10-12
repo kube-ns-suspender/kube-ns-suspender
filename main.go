@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot create new engine")
 	}
-	// eng.Logger.Debug().Msgf("timezone: %s", eng.TZ.String())
+	eng.Logger.Debug().Msgf("timezone: %s", time.Local.String())
 	eng.Logger.Debug().Msgf("watcher idle: %s", time.Duration(eng.Options.WatcherIdle)*time.Second)
 	eng.Logger.Debug().Msgf("log level: %s", eng.Options.LogLevel)
 	eng.Logger.Info().Msg("kube-ns-suspender launched")
