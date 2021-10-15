@@ -43,7 +43,32 @@ The suspender function does all the work of reading namespaces/resources annotat
 
 ### Flags
 
-/* explain the different flags, the associated env vars... */
+The flags currently available are the following:
+
+```
+-dry-run    bool
+    Run in dry mode. Resources will not be updated.
+    Default: false
+
+-loglevel   string
+    Log level that will be use. Accepted values are "trace", "debug", "info", "warn", "error", "fatal".
+    Default: debug
+
+-no-kube-warnings   bool
+    Disable Kubernetes warnings.
+    Default: false
+
+-timezone string
+    Set a specific timezone for all operations in the controller. The format must be "Continent/City".
+    Default: Europe/Paris
+
+-watcher-idle   int
+    Period between each namespaces scan done by the watcher, in seconds.
+    Default: 15
+```
+
+Note that environment variables can be used instead of flags. It is required to use the prefix `KUBE_NS_SUSPENDER` followed by the variable name in upper case, with underscores instead of dashes. For example, to set the log level with the environement variable, one can define a variable called `KUBE_NS_SUSPENDER_LOGLEVEL`.
+
 
 ### Resources
 
