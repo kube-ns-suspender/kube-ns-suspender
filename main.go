@@ -9,6 +9,7 @@ import (
 
 	"github.com/govirtuo/kube-ns-suspender/engine"
 	"github.com/govirtuo/kube-ns-suspender/metrics"
+	"github.com/govirtuo/kube-ns-suspender/webui"
 	"github.com/rs/zerolog/log"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -25,6 +26,8 @@ func main() {
 	fs.IntVar(&opt.WatcherIdle, "watcher-idle", 15, "Watcher idle duration (in seconds)")
 	fs.BoolVar(&opt.DryRun, "dry-run", false, "Run in dry run mode")
 	fs.BoolVar(&opt.NoKubeWarnings, "no-kube-warnings", false, "Disable Kubernetes warnings")
+	fs.BoolVar(&opt.WebUI, "web-ui", true, "Start web UI on port 8080")
+
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}
@@ -44,6 +47,18 @@ func main() {
 	eng.Logger.Debug().Msgf("watcher idle: %s", time.Duration(eng.Options.WatcherIdle)*time.Second)
 	eng.Logger.Debug().Msgf("log level: %s", eng.Options.LogLevel)
 	eng.Logger.Info().Msg("kube-ns-suspender launched")
+
+	// start web ui
+	if eng.Options.WebUI {
+		go func() {
+			uiLogger := eng.Logger.With().
+				Str("routine", "webui").Logger()
+			if err := webui.Start(uiLogger, "8080"); err != nil {
+				uiLogger.Fatal().Err(err).Msg("web UI failed")
+			}
+		}()
+		eng.Logger.Info().Msg("web UI successfully created")
+	}
 
 	// create metrics server
 	eng.MetricsServ = *metrics.Init()
