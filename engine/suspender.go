@@ -150,6 +150,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					sLogger.Info().
 						Msgf("suspended namespace %s based on uptime", n.Name)
 					desiredState = suspended
+					delete(eng.RunningNamespacesList, n.Name)
 				}
 			}
 		case suspended:
