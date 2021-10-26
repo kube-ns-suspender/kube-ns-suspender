@@ -61,6 +61,8 @@ func flip(i int32) *int32 {
 	return &i
 }
 
+// getTimes takes a suspendAt value and convert its value into minutes, and do
+// the same with time.Now().
 func getTimes(suspendAt string) (int, int, error) {
 	suspendTime, err := time.Parse(time.Kitchen, suspendAt)
 	if err != nil {
