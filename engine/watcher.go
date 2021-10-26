@@ -35,12 +35,12 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		var wllen, runningNs, suspendedNs, unknownNs int
 		// look for new namespaces to watch
 		for _, n := range ns.Items {
-			// if state, ok := n.Annotations["kube-ns-suspender/suspendAt"]; ok {
-			if _, ok := n.Annotations["kube-ns-suspender/suspendAt"]; ok {
+			// if state, ok := n.Annotations[eng.Options.Prefix + "suspendAt"]; ok {
+			if _, ok := n.Annotations[eng.Options.Prefix+"suspendAt"]; ok {
 				eng.Wl <- n
 				wllen++
 				// try to get the desiredState annotation
-				if state, ok := n.Annotations["kube-ns-suspender/desiredState"]; ok {
+				if state, ok := n.Annotations[eng.Options.Prefix+"desiredState"]; ok {
 					// increment variables for metrics
 					switch state {
 					case running:

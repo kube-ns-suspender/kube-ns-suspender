@@ -12,6 +12,8 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
+// Suspender receives namespaces from Watcher and handles them. It means that
+// it will read and write namespaces' annotations, and scale resources.
 func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 	eng.Mutex.Lock()
 	sLogger := eng.Logger.With().
@@ -28,11 +30,11 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		start := time.Now()
 		eng.Mutex.Lock()
 		sLogger = sLogger.With().Str("namespace", n.Name).Logger()
-		desiredState, ok := n.Annotations["kube-ns-suspender/desiredState"]
+		desiredState, ok := n.Annotations[eng.Options.Prefix+"desiredState"]
 		if !ok {
 			// the annotation does not exist, which means that it is the first
 			// time we see this namespace. So by default, it should be "running"
-			now, suspendAt, err := getTimes(n.Annotations["kube-ns-suspender/suspendAt"])
+			now, suspendAt, err := getTimes(n.Annotations[eng.Options.Prefix+"suspendAt"])
 			if err != nil {
 				sLogger.Error().
 					Err(err).
