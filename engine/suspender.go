@@ -34,13 +34,14 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		if !ok {
 			// the annotation does not exist, which means that it is the first
 			// time we see this namespace. So by default, it should be "running"
-			now, suspendAt, err := getTimes(n.Annotations[eng.Options.Prefix+"suspendAt"])
+			now, suspendAt, err := getTimes(n.Annotations[eng.Options.Prefix+"dailySuspendTime"])
 			if err != nil {
 				sLogger.Error().
 					Err(err).
-					Msgf("cannot parse suspendAt time on namespace %s", n.Name)
+					Msgf("cannot parse dailySuspendTime time on namespace %s", n.Name)
 			}
-			sLogger.Trace().Msgf("now: %d, suspendAt: %d", now, suspendAt)
+			sLogger.Trace().Msgf("now: %d, dailySuspendTime: %d, remaining: %s", now, suspendAt,
+				time.Duration(suspendAt)*time.Minute-time.Duration(now)*time.Minute)
 			if suspendAt <= now {
 				// patch the namespace
 				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
