@@ -20,7 +20,8 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 
 	var id int
 	for {
-		wlLogger.Debug().Int("inventory id", id).
+		start := time.Now()
+		wlLogger.Debug().Int("inventory_id", id).
 			Msg("starting new namespaces inventory")
 		ns, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{}) // TODO: think about adding a label to filter here
 		if err != nil {
@@ -31,23 +32,24 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 
 		eng.Mutex.Lock()
 		// create fresh new variables for metrics
-		var wllen, runningNs, suspendedNs, runningForcedNs, unknownNs int
+		var wllen, runningNs, suspendedNs, unknownNs int
 		// look for new namespaces to watch
 		for _, n := range ns.Items {
-			if state, ok := n.Annotations["kube-ns-suspender/desiredState"]; ok {
+			// if state, ok := n.Annotations["kube-ns-suspender/suspendAt"]; ok {
+			if _, ok := n.Annotations["kube-ns-suspender/suspendAt"]; ok {
 				eng.Wl <- n
-
-				// increment variables for metrics
 				wllen++
-				switch state {
-				case running:
-					runningNs++
-				case forced:
-					runningForcedNs++
-				case suspended:
-					suspendedNs++
-				default:
-					unknownNs++
+				// try to get the desiredState annotation
+				if state, ok := n.Annotations["kube-ns-suspender/desiredState"]; ok {
+					// increment variables for metrics
+					switch state {
+					case running:
+						runningNs++
+					case suspended:
+						suspendedNs++
+					default:
+						unknownNs++
+					}
 				}
 			}
 		}
@@ -61,12 +63,13 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		wlLogger.Debug().Msgf("suspended namespaces: %d", suspendedNs)
 		eng.MetricsServ.NumSuspendedNamspaces.Set(float64(suspendedNs))
 
-		wlLogger.Debug().Msgf("running forced namespaces: %d", runningForcedNs)
-		eng.MetricsServ.NumRunningForcedNamspaces.Set(float64(runningForcedNs))
+		wlLogger.Debug().Msgf("unknown namespaces: %d", unknownNs)
+		// eng.MetricsServ.NumUn.Set(float64(unknownNs)) // TODO: add metric for unknown namespaces
 
-		wlLogger.Debug().Int("inventory id", id).Msg("namespaces inventory ended")
+		wlLogger.Debug().Int("inventory_id", id).Msg("namespaces inventory ended")
 		eng.Mutex.Unlock()
 		id++
+		wlLogger.Debug().Int("inventory_id", id).Msgf("inventory duration: %s", time.Since(start))
 		time.Sleep(time.Duration(eng.Options.WatcherIdle) * time.Second)
 	}
 }

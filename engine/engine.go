@@ -13,23 +13,24 @@ import (
 const (
 	running   = "Running"
 	suspended = "Suspended"
-	forced    = "RunningForced"
 )
 
 type Engine struct {
-	Logger               zerolog.Logger
-	Mutex                sync.Mutex
-	Wl                   chan v1.Namespace
-	MetricsServ          metrics.Server
-	RunningForcedHistory map[string]time.Time
-	Options              Options
+	Logger                zerolog.Logger
+	Mutex                 sync.Mutex
+	Wl                    chan v1.Namespace
+	MetricsServ           metrics.Server
+	RunningNamespacesList map[string]time.Time
+	Options               Options
 }
 
 type Options struct {
-	WatcherIdle            int
-	LogLevel               string
-	TZ                     string
-	DryRun, NoKubeWarnings bool
+	WatcherIdle                       int
+	RunningDuration                   int
+	LogLevel                          string
+	TZ                                string
+	Prefix                            string
+	DryRun, NoKubeWarnings, HumanLogs bool
 }
 
 // New returns a new engine instance
@@ -46,6 +47,10 @@ func New(opt Options) (*Engine, error) {
 		return nil, err
 	}
 	e.Logger = e.Logger.Level(lvl)
+	if e.Options.HumanLogs {
+		e.Logger = e.Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
+
 	return &e, nil
 }
 

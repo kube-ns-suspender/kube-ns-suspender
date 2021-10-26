@@ -16,7 +16,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 	eng.Mutex.Lock()
 	sLogger := eng.Logger.With().
 		Str("routine", "suspender").Logger()
-	eng.RunningForcedHistory = make(map[string]time.Time)
+	eng.RunningNamespacesList = make(map[string]time.Time)
 	eng.Mutex.Unlock()
 
 	sLogger.Info().
@@ -25,27 +25,29 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 	for {
 		// wait for the next namespace to check
 		n := <-eng.Wl
+		start := time.Now()
 		eng.Mutex.Lock()
-
-		if suspendAt, ok := n.Annotations["kube-ns-suspender/suspendAt"]; ok {
-			// suspendAt is specified, so we need to check if we have to suspend
-			// the namespace
-			now, suspend, err := getTimes(suspendAt)
+		sLogger = sLogger.With().Str("namespace", n.Name).Logger()
+		desiredState, ok := n.Annotations["kube-ns-suspender/desiredState"]
+		if !ok {
+			// the annotation does not exist, which means that it is the first
+			// time we see this namespace. So by default, it should be "running"
+			now, suspendAt, err := getTimes(n.Annotations["kube-ns-suspender/suspendAt"])
 			if err != nil {
-				sLogger.Fatal().
+				sLogger.Error().
 					Err(err).
-					Str("namespace", n.Name).
-					Msg("cannot parse suspend time")
+					Msgf("cannot parse suspendAt time on namespace %s", n.Name)
 			}
-
-			if n.Annotations["kube-ns-suspender/desiredState"] == running && suspend <= now {
+			sLogger.Trace().Msgf("now: %d, suspendAt: %d", now, suspendAt)
+			if suspendAt <= now {
 				// patch the namespace
-				err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					result, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+					res, err := cs.CoreV1().
+						Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
 					if err != nil {
 						return err
 					}
-					result.Annotations["kube-ns-suspender/desiredState"] = suspended
+					res.Annotations["kube-ns-suspender/desiredState"] = suspended
 					var updateOpts metav1.UpdateOptions
 					// if the flag -dryrun is used, do not update resources
 					if eng.Options.DryRun {
@@ -53,77 +55,84 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 							DryRun: append(updateOpts.DryRun, "All"),
 						}
 					}
-					_, err = cs.CoreV1().Namespaces().Update(ctx, result, updateOpts)
+					_, err = cs.CoreV1().
+						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
 					return err
-				})
-				if err != nil {
-					sLogger.Fatal().
+				}); err != nil {
+					sLogger.Error().
 						Err(err).
-						Str("namespace", n.Name).
-						Msg("cannot update namespace object")
-				}
-				sLogger.Info().
-					Str("namespace", n.Name).
-					Msgf("suspended namespace %s based on suspend time", n.Name)
-				n.Annotations["kube-ns-suspender/desiredState"] = suspended
-
-			}
-		}
-
-		if n.Annotations["kube-ns-suspender/desiredState"] == forced {
-			if creationTime, ok := eng.RunningForcedHistory[n.Name]; ok {
-				if time.Since(creationTime.Local()) >= 10*time.Minute {
-					// suspend the namespace
-					err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-						result, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
-						if err != nil {
-							return err
-						}
-						result.Annotations["kube-ns-suspender/desiredState"] = suspended
-						var updateOpts metav1.UpdateOptions
-						// if the flag -dryrun is used, do not update resources
-						if eng.Options.DryRun {
-							updateOpts = metav1.UpdateOptions{
-								DryRun: append(updateOpts.DryRun, "All"),
-							}
-						}
-						_, err = cs.CoreV1().Namespaces().Update(ctx, result, metav1.UpdateOptions{})
-						return err
-					})
-					if err != nil {
-						sLogger.Fatal().
-							Err(err).
-							Str("namespace", n.Name).
-							Msg("cannot update namespace object")
-					}
-					n.Annotations["kube-ns-suspender/desiredState"] = suspended
-
-					// remove the namespace from the map
-					delete(eng.RunningForcedHistory, n.Name)
+						Msgf("cannot update namespace %s object", n.Name)
+				} else {
 					sLogger.Info().
-						Str("namespace", n.Name).
-						Msgf("suspended namespace %s based on uptime", n.Name)
+						Msgf("suspended namespace %s based on daily suspend time", n.Name)
 				}
+				desiredState = suspended
 			} else {
-				eng.RunningForcedHistory[n.Name] = time.Now().Local()
-				sLogger.Info().
-					Str("namespace", n.Name).
-					Msgf("unpausing %s", n.Name)
-				sLogger.Info().
-					Str("namespace", n.Name).
-					Msgf("%s will be automatically suspended at %s", n.Name, eng.RunningForcedHistory[n.Name].Add(10*time.Minute))
+				eng.Mutex.Unlock()
+				sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+				continue
 			}
 		}
 
-		// get the namespace desired status
-		desiredState := n.Annotations["kube-ns-suspender/desiredState"]
+		switch desiredState {
+		case running:
+			if date, ok := eng.RunningNamespacesList[n.Name]; !ok {
+				// first time we see this namespace as running, so we simply add
+				// it to the map with the current time
+				eng.RunningNamespacesList[n.Name] = time.Now().Local()
+			} else {
+				if time.Now().Local().Sub(date) < time.Duration(eng.Options.RunningDuration)*time.Hour {
+					// we do not have to suspend the namespace yet, so we
+					// continue
+					eng.Mutex.Unlock()
+					sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+					continue
+				}
+				// if we end up here, it means that we have to suspend the
+				// namespace as it as been running for too long
+				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+					res, err := cs.CoreV1().
+						Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+					res.Annotations["kube-ns-suspender/desiredState"] = suspended
+					var updateOpts metav1.UpdateOptions
+					// if the flag -dryrun is used, do not update resources
+					if eng.Options.DryRun {
+						updateOpts = metav1.UpdateOptions{
+							DryRun: append(updateOpts.DryRun, "All"),
+						}
+					}
+					_, err = cs.CoreV1().
+						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+					return err
+				}); err != nil {
+					sLogger.Error().
+						Err(err).
+						Msgf("cannot update namespace %s object", n.Name)
+				} else {
+					sLogger.Info().
+						Msgf("suspended namespace %s based on uptime", n.Name)
+					desiredState = suspended
+				}
+			}
+		case suspended:
+		default:
+			sLogger.Error().
+				Err(errors.New("state not recognised: "+desiredState)).
+				Msgf("state %s is not recognised", desiredState)
+			eng.Mutex.Unlock()
+			sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+			continue
+		}
 
+		// we do a switch again, but with the updated value
 		// get deployments of the namespace
 		deployments, err := cs.AppsV1().Deployments(n.Name).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			sLogger.Fatal().
 				Err(err).
-				Str("namespace", n.Name).
 				Str("object", "deployment").
 				Msg("cannot list deployments")
 		}
@@ -133,7 +142,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		if err != nil {
 			sLogger.Fatal().
 				Err(err).
-				Str("namespace", n.Name).
 				Str("object", "cronjob").
 				Msg("cannot list cronjobs")
 		}
@@ -143,21 +151,18 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		if err != nil {
 			sLogger.Fatal().
 				Err(err).
-				Str("namespace", n.Name).
 				Str("object", "statefulset").
 				Msg("cannot list statefulsets")
 		}
-
 		var wg sync.WaitGroup
 		switch desiredState {
-		case running, forced:
+		case running:
 			wg.Add(3)
 			// check and patch deployments
 			go func() {
 				if err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
-						Str("namespace", n.Name).
 						Str("object", "deployment").
 						Msg("running deployments conformity checks failed")
 				}
@@ -169,7 +174,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				if err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
-						Str("namespace", n.Name).
 						Str("object", "cronjob").
 						Msg("running cronjobs conformity checks failed")
 				}
@@ -181,7 +185,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				if err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
-						Str("namespace", n.Name).
 						Str("object", "statefulset").
 						Msg("running steatfulsets conformity checks failed")
 				}
@@ -194,7 +197,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
-						Str("namespace", n.Name).
 						Str("object", "deployment").
 						Msg("suspended conformity checks failed")
 				}
@@ -206,7 +208,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
-						Str("namespace", n.Name).
 						Str("object", "cronjob").
 						Msg("suspended cronjobs conformity checks failed")
 				}
@@ -218,7 +219,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
-						Str("namespace", n.Name).
 						Str("object", "statefulset").
 						Msg("suspended steatfulsets conformity checks failed")
 				}
@@ -228,10 +228,11 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			errMsg := fmt.Sprintf("state %s is not a supported state", desiredState)
 			sLogger.Error().
 				Err(errors.New(errMsg)).
-				Str("namespace", n.Name).
 				Msg("desired state cannot be recognised")
 		}
 		wg.Wait()
+		// modify resources now based on n state
 		eng.Mutex.Unlock()
+		sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
 	}
 }
