@@ -51,6 +51,9 @@ func New(opt Options) (*Engine, error) {
 		e.Logger = e.Logger.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	}
 
+	if e.Options.Prefix[len(e.Options.Prefix)-1] != '/' {
+		e.Options.Prefix = e.Options.Prefix + "/"
+	}
 	return &e, nil
 }
 

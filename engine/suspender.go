@@ -49,7 +49,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					if err != nil {
 						return err
 					}
-					res.Annotations["kube-ns-suspender/desiredState"] = suspended
+					res.Annotations[eng.Options.Prefix+"desiredState"] = suspended
 					var updateOpts metav1.UpdateOptions
 					// if the flag -dryrun is used, do not update resources
 					if eng.Options.DryRun {
@@ -82,8 +82,38 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				// first time we see this namespace as running, so we simply add
 				// it to the map with the current time
 				eng.RunningNamespacesList[n.Name] = time.Now().Local()
+
+				// then we add the annotation that indicates when the namespace
+				// will be automtically suspended again
+				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+					res, err := cs.CoreV1().
+						Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+					res.Annotations[eng.Options.Prefix+"auto_nextSuspendTime"] = time.Now().
+						Add(time.Duration(eng.Options.RunningDuration) * time.Minute).Format(time.Kitchen)
+					var updateOpts metav1.UpdateOptions
+					// if the flag -dryrun is used, do not update resources
+					if eng.Options.DryRun {
+						updateOpts = metav1.UpdateOptions{
+							DryRun: append(updateOpts.DryRun, "All"),
+						}
+					}
+					_, err = cs.CoreV1().
+						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+					return err
+				}); err != nil {
+					sLogger.Error().
+						Err(err).
+						Msgf("cannot add nextSuspendTime annotation to namespace %s", n.Name)
+				} else {
+					sLogger.Debug().
+						Msgf("added nextSuspendTime annotation to %s on %s ", time.Now().
+							Add(time.Duration(eng.Options.RunningDuration)*time.Minute).Format(time.Kitchen), n.Name)
+				}
 			} else {
-				if time.Now().Local().Sub(date) < time.Duration(eng.Options.RunningDuration)*time.Hour {
+				if time.Now().Local().Sub(date) < time.Duration(eng.Options.RunningDuration)*time.Minute {
 					// we do not have to suspend the namespace yet, so we
 					// continue
 					eng.Mutex.Unlock()
@@ -98,7 +128,9 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					if err != nil {
 						return err
 					}
-					res.Annotations["kube-ns-suspender/desiredState"] = suspended
+					res.Annotations[eng.Options.Prefix+"desiredState"] = suspended
+					delete(res.Annotations, eng.Options.Prefix+"auto_nextSuspendTime")
+
 					var updateOpts metav1.UpdateOptions
 					// if the flag -dryrun is used, do not update resources
 					if eng.Options.DryRun {
