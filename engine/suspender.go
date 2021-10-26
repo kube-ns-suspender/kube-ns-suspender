@@ -93,7 +93,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 						return err
 					}
 					res.Annotations[eng.Options.Prefix+"auto_nextSuspendTime"] = time.Now().
-						Add(time.Duration(eng.Options.RunningDuration) * time.Minute).Format(time.Kitchen)
+						Add(time.Duration(eng.Options.RunningDuration) * time.Hour).Format(time.Kitchen)
 					var updateOpts metav1.UpdateOptions
 					// if the flag -dryrun is used, do not update resources
 					if eng.Options.DryRun {
@@ -114,7 +114,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 							Add(time.Duration(eng.Options.RunningDuration)*time.Minute).Format(time.Kitchen), n.Name)
 				}
 			} else {
-				if time.Now().Local().Sub(date) < time.Duration(eng.Options.RunningDuration)*time.Minute {
+				if time.Now().Local().Sub(date) < time.Duration(eng.Options.RunningDuration)*time.Hour {
 					// we do not have to suspend the namespace yet, so we
 					// continue
 					eng.Mutex.Unlock()
