@@ -10,13 +10,13 @@ import (
 
 // Server is the metrics server. It contains all the Prometheus metrics
 type Server struct {
-	Addr                      string
-	NotRespondingList         map[string]bool
-	WatchlistLength           prometheus.Gauge
-	Uptime                    prometheus.Gauge
-	NumRunningNamspaces       prometheus.Gauge
-	NumRunningForcedNamspaces prometheus.Gauge
-	NumSuspendedNamspaces     prometheus.Gauge
+	Addr                  string
+	NotRespondingList     map[string]bool
+	WatchlistLength       prometheus.Gauge
+	Uptime                prometheus.Gauge
+	NumRunningNamspaces   prometheus.Gauge
+	NumSuspendedNamspaces prometheus.Gauge
+	NumUnknownNamespaces  prometheus.Gauge
 }
 
 // Init initializes the metrics
@@ -34,13 +34,13 @@ func Init() *Server {
 			Name: "kube_ns_suspender_running_namespaces",
 			Help: "Number of namespaces that have the desired state 'Running'",
 		}),
-		NumRunningForcedNamspaces: prometheus.NewGauge(prometheus.GaugeOpts{
-			Name: "kube_ns_suspender_running_forced_namespaces",
-			Help: "Number of namespaces that have the desired state 'RunningForced'",
-		}),
 		NumSuspendedNamspaces: prometheus.NewGauge(prometheus.GaugeOpts{
 			Name: "kube_ns_suspender_suspended_namespaces",
 			Help: "Number of namespaces that have the desired state 'Suspended'",
+		}),
+		NumUnknownNamespaces: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "kube_ns_suspender_unknown_namespaces",
+			Help: "Number of namespaces that have an unknown state",
 		}),
 	}
 
@@ -48,7 +48,6 @@ func Init() *Server {
 		s.Uptime,
 		s.WatchlistLength,
 		s.NumRunningNamspaces,
-		s.NumRunningForcedNamspaces,
 		s.NumSuspendedNamspaces,
 	)
 
