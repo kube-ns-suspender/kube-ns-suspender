@@ -28,6 +28,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		// wait for the next namespace to check
 		n := <-eng.Wl
 		start := time.Now()
+		sLogger.Trace().Msgf("namespace %s received from watcher", n.Name)
 		eng.Mutex.Lock()
 		sLogger = sLogger.With().Str("namespace", n.Name).Logger()
 		desiredState, ok := n.Annotations[eng.Options.Prefix+"desiredState"]
@@ -154,6 +155,8 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				}
 			}
 		case suspended:
+			// TODO: think about removing ²the annotation auto_nextSuspendTime
+			// here. Elsewhere, it will stay until the next running call.
 		default:
 			sLogger.Error().
 				Err(errors.New("state not recognised: "+desiredState)).

@@ -37,6 +37,7 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		for _, n := range ns.Items {
 			if _, ok := n.Annotations[eng.Options.Prefix+"dailySuspendTime"]; ok {
 				eng.Wl <- n
+				wlLogger.Trace().Msgf("namespace %s sent to suspender", n.Name)
 				wllen++
 				// try to get the desiredState annotation
 				if state, ok := n.Annotations[eng.Options.Prefix+"desiredState"]; ok {
@@ -63,7 +64,7 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		eng.MetricsServ.NumSuspendedNamspaces.Set(float64(suspendedNs))
 
 		wlLogger.Debug().Msgf("unknown namespaces: %d", unknownNs)
-		// eng.MetricsServ.NumUn.Set(float64(unknownNs)) // TODO: add metric for unknown namespaces
+		eng.MetricsServ.NumUnknownNamespaces.Set(float64(unknownNs))
 
 		wlLogger.Debug().Int("inventory_id", id).Msg("namespaces inventory ended")
 		eng.Mutex.Unlock()
