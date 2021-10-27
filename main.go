@@ -20,7 +20,7 @@ func main() {
 	var opt engine.Options
 	var err error
 	fs := flag.NewFlagSetWithEnvPrefix(os.Args[0], "KUBE_NS_SUSPENDER", 0)
-	fs.StringVar(&opt.LogLevel, "loglevel", "debug", "Log level")
+	fs.StringVar(&opt.LogLevel, "log-level", "debug", "Log level")
 	fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
 	fs.StringVar(&opt.Prefix, "prefix", "kube-ns-suspender/", "Prefix to use for annotations")
 	fs.IntVar(&opt.WatcherIdle, "watcher-idle", 15, "Watcher idle duration (in seconds)")

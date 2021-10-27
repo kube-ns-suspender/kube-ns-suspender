@@ -111,7 +111,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				} else {
 					sLogger.Debug().
 						Msgf("added nextSuspendTime annotation to %s on %s ", time.Now().
-							Add(time.Duration(eng.Options.RunningDuration)*time.Minute).Format(time.Kitchen), n.Name)
+							Add(time.Duration(eng.Options.RunningDuration)*time.Hour).Format(time.Kitchen), n.Name)
 				}
 			} else {
 				if time.Now().Local().Sub(date) < time.Duration(eng.Options.RunningDuration)*time.Hour {
