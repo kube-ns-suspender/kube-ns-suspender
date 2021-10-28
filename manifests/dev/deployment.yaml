@@ -1,9 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kube-ns-suspender-depl
+  name: kube-ns-suspender-testing
   labels:
     app: kube-ns-suspender
+  namespace: kube-ns-suspender-testing
 spec:
   replicas: 1
   selector:

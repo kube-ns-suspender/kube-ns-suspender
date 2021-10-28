@@ -12,17 +12,18 @@ import (
 )
 
 func checkRunningStatefulsetsConformity(ctx context.Context, l zerolog.Logger, statefulsets []appsv1.StatefulSet, cs *kubernetes.Clientset, ns string, dr bool) error {
+	haveBeenEdited := false
 	for _, ss := range statefulsets {
 		repl := int(*ss.Spec.Replicas)
 		if repl == 0 {
+			haveBeenEdited = true
 			// get the desired number of replicas
 			repl, err := strconv.Atoi(ss.Annotations["kube-ns-suspender/originalReplicas"])
 			if err != nil {
 				return err
 			}
 
-			l.Info().
-				Str("namespace", ns).
+			l.Debug().
 				Str("statefulset", ss.Name).
 				Msgf("scaling %s from 0 to %d replicas", ss.Name, repl)
 			// patch the statefulset
@@ -31,16 +32,20 @@ func checkRunningStatefulsetsConformity(ctx context.Context, l zerolog.Logger, s
 			}
 		}
 	}
+	if haveBeenEdited {
+		l.Info().Msgf("statefulsets in namespace %s have been scaled up", ns)
+	}
 	return nil
 }
 
 func checkSuspendedStatefulsetsConformity(ctx context.Context, l zerolog.Logger, statefulsets []appsv1.StatefulSet, cs *kubernetes.Clientset, ns string, dr bool) error {
+	haveBeenEdited := false
 	for _, ss := range statefulsets {
 		repl := int(*ss.Spec.Replicas)
 		if repl != 0 {
+			haveBeenEdited = true
 			// TODO: what about fixing the annotation original Replicas here ?
-			l.Info().
-				Str("namespace", ns).
+			l.Debug().
 				Str("statefulset", ss.Name).
 				Msgf("scaling %s from %d to 0 replicas", ss.Name, repl)
 			// patch the deployment
@@ -48,6 +53,9 @@ func checkSuspendedStatefulsetsConformity(ctx context.Context, l zerolog.Logger,
 				return err
 			}
 		}
+	}
+	if haveBeenEdited {
+		l.Info().Msgf("statefulsets in namespace %s have been scaled down", ns)
 	}
 	return nil
 }

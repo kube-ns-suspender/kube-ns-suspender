@@ -2,14 +2,8 @@ version: v1beta11
 
 # `vars` specifies variables which may be used as ${VAR_NAME} in devspace.yaml
 vars:
-- name: REGISTRY_PASSWORD
-  password: true
 - name: IMAGE
   value: ghcr.io/govirtuo/kube-ns-suspender
-pullSecrets:
-- registry: ghcr.io
-  username: ${REGISTRY_USERNAME}
-  password: ${REGISTRY_PASSWORD}
 
 # `deployments` tells DevSpace how to deploy this project
 deployments:
@@ -17,10 +11,22 @@ deployments:
   # This deployment uses `kubectl` but you can also define `helm` deployments
   kubectl:
     manifests:
-    - manifests/dev/*
+    - manifests/dev/deployment.yaml
 
 # `dev` only applies when you run `devspace dev`
 dev:
+  # `dev.ports` specifies all ports that should be forwarded while `devspace dev` is running
+  # Port-forwarding lets you access your application via localhost on your local machine
+  ports:
+  - imageSelector: ${IMAGE} # Select the Pod that runs our `${IMAGE}`
+    forward:
+    - port: 2112
+
+  # `dev.open` tells DevSpace to open certain URLs as soon as they return HTTP status 200
+  # Since we configured port-forwarding, we can use a localhost address here to access our application
+  open:
+  - url: http://localhost:2112
+
   # `dev.sync` configures a file sync between our Pods in k8s and your local project files
   sync:
   - imageSelector: ${IMAGE} # Select the Pod that runs our `${IMAGE}`

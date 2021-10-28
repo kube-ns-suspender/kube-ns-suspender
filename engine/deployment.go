@@ -14,6 +14,7 @@ import (
 // checkRunningDeploymentsConformity verifies that all deployments within the namespace are
 // currently running
 func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string, dr bool) error {
+	haveBeenEdited := false
 	for _, d := range deployments {
 		// debug: on
 		if d.Name == "kube-ns-suspender-depl" {
@@ -22,14 +23,14 @@ func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, de
 		// debug: off
 		repl := int(*d.Spec.Replicas)
 		if repl == 0 {
+			haveBeenEdited = true
 			// get the desired number of replicas
 			repl, err := strconv.Atoi(d.Annotations["kube-ns-suspender/originalReplicas"])
 			if err != nil {
 				return err
 			}
 
-			l.Info().
-				Str("namespace", ns).
+			l.Debug().
 				Str("deployment", d.Name).
 				Msgf("scaling %s from 0 to %d replicas", d.Name, repl)
 			// patch the deployment
@@ -40,16 +41,20 @@ func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, de
 			}
 		}
 	}
+	if haveBeenEdited {
+		l.Info().Msgf("deployments in namespace %s have been scaled up", ns)
+	}
 	return nil
 }
 
 func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string, dr bool) error {
+	haveBeenEdited := false
 	for _, d := range deployments {
 		repl := int(*d.Spec.Replicas)
 		if repl != 0 {
+			haveBeenEdited = true
 			// TODO: what about fixing the annotation original Replicas here ?
-			l.Info().
-				Str("namespace", ns).
+			l.Debug().
 				Str("deployment", d.Name).
 				Msgf("scaling %s from %d to 0 replicas", d.Name, repl)
 			// patch the deployment if -dryrun is not set
@@ -59,6 +64,9 @@ func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, 
 				}
 			}
 		}
+	}
+	if haveBeenEdited {
+		l.Info().Msgf("deployments in namespace %s have been scaled down", ns)
 	}
 	return nil
 }

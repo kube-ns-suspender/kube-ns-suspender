@@ -11,10 +11,11 @@ import (
 )
 
 func checkRunningCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string, dr bool) error {
+	haveBeenEdited := false
 	for _, c := range cronjobs {
 		if *c.Spec.Suspend {
-			l.Info().
-				Str("namespace", ns).
+			haveBeenEdited = true
+			l.Debug().
 				Str("cronjob", c.Name).
 				Msgf("updating %s from suspend: true to suspend: false", c.Name)
 			if err := patchCronjobSuspend(ctx, cs, ns, c.Name, false); err != nil {
@@ -22,20 +23,27 @@ func checkRunningCronjobsConformity(ctx context.Context, l zerolog.Logger, cronj
 			}
 		}
 	}
+	if haveBeenEdited {
+		l.Info().Msgf("cronjobs in namespace %s have been unsuspended", ns)
+	}
 	return nil
 }
 
 func checkSuspendedCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string, dr bool) error {
+	haveBeenEdited := false
 	for _, c := range cronjobs {
 		if !*c.Spec.Suspend {
-			l.Info().
-				Str("namespace", ns).
+			haveBeenEdited = true
+			l.Debug().
 				Str("cronjob", c.Name).
 				Msgf("updating %s from suspend: false to suspend: true", c.Name)
 			if err := patchCronjobSuspend(ctx, cs, ns, c.Name, true); err != nil {
 				return err
 			}
 		}
+	}
+	if haveBeenEdited {
+		l.Info().Msgf("cronjobs in namespace %s have been suspended", ns)
 	}
 	return nil
 }

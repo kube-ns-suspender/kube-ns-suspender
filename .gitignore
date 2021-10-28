@@ -1,3 +1,6 @@
 # Ignore DevSpace cache and log folder
 .devspace/
 ./manifests/dev/*
+
+# Ignore DevSpace cache and log folder
+.devspace/

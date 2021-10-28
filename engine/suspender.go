@@ -124,26 +124,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				}
 				// if we end up here, it means that we have to suspend the
 				// namespace as it as been running for too long
-				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					res, err := cs.CoreV1().
-						Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
-					if err != nil {
-						return err
-					}
-					res.Annotations[eng.Options.Prefix+"desiredState"] = suspended
-					delete(res.Annotations, eng.Options.Prefix+"auto_nextSuspendTime")
-
-					var updateOpts metav1.UpdateOptions
-					// if the flag -dryrun is used, do not update resources
-					if eng.Options.DryRun {
-						updateOpts = metav1.UpdateOptions{
-							DryRun: append(updateOpts.DryRun, "All"),
-						}
-					}
-					_, err = cs.CoreV1().
-						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
-					return err
-				}); err != nil {
+				if err := removeAnnotation(ctx, cs, n.Name, eng.Options.Prefix+"auto_nextSuspendTime", eng.Options.DryRun); err != nil {
 					sLogger.Error().
 						Err(err).
 						Msgf("cannot update namespace %s object", n.Name)
@@ -151,12 +132,24 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					sLogger.Info().
 						Msgf("suspended namespace %s based on uptime", n.Name)
 					desiredState = suspended
-					delete(eng.RunningNamespacesList, n.Name)
 				}
+				delete(eng.RunningNamespacesList, n.Name)
 			}
 		case suspended:
-			// TODO: think about removing ²the annotation auto_nextSuspendTime
-			// here. Elsewhere, it will stay until the next running call.
+			if _, ok := n.Annotations[eng.Options.Prefix+"auto_nextSuspendTime"]; ok {
+				// if we end up here, it means that the ns as been suspended manually
+				delete(n.Annotations, eng.Options.Prefix+"auto_nextSuspendTime")
+				if err := removeAnnotation(ctx, cs, n.Name, eng.Options.Prefix+"auto_nextSuspendTime", eng.Options.DryRun); err != nil {
+					sLogger.Error().
+						Err(err).
+						Msgf("cannot update namespace %s object", n.Name)
+				} else {
+					sLogger.Info().
+						Msgf("removed auto_nextSuspendTime on namespace %s", n.Name)
+					desiredState = suspended
+				}
+				delete(eng.RunningNamespacesList, n.Name)
+			}
 		default:
 			sLogger.Error().
 				Err(errors.New("state not recognised: "+desiredState)).
@@ -274,4 +267,27 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		eng.Mutex.Unlock()
 		sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
 	}
+}
+
+// removeAnnotation removes an annotation on a given namespace
+func removeAnnotation(ctx context.Context, cs *kubernetes.Clientset, namespace, fullannotation string, dryrun bool) error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		res, err := cs.CoreV1().
+			Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+		delete(res.Annotations, fullannotation)
+
+		var updateOpts metav1.UpdateOptions
+		// if the flag -dryrun is used, do not update resources
+		if dryrun {
+			updateOpts = metav1.UpdateOptions{
+				DryRun: append(updateOpts.DryRun, "All"),
+			}
+		}
+		_, err = cs.CoreV1().
+			Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+		return err
+	})
 }
