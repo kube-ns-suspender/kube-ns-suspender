@@ -18,7 +18,7 @@ func checkRunningCronjobsConformity(ctx context.Context, l zerolog.Logger, cronj
 			l.Debug().
 				Str("cronjob", c.Name).
 				Msgf("updating %s from suspend: true to suspend: false", c.Name)
-			if err := patchCronjobSuspend(ctx, cs, ns, c.Name, false); err != nil {
+			if err := patchCronjobSuspend(ctx, l, cs, ns, c.Name, false); err != nil {
 				return err
 			}
 		}
@@ -37,7 +37,7 @@ func checkSuspendedCronjobsConformity(ctx context.Context, l zerolog.Logger, cro
 			l.Debug().
 				Str("cronjob", c.Name).
 				Msgf("updating %s from suspend: false to suspend: true", c.Name)
-			if err := patchCronjobSuspend(ctx, cs, ns, c.Name, true); err != nil {
+			if err := patchCronjobSuspend(ctx, l, cs, ns, c.Name, true); err != nil {
 				return err
 			}
 		}
@@ -49,7 +49,7 @@ func checkSuspendedCronjobsConformity(ctx context.Context, l zerolog.Logger, cro
 }
 
 // patchCronjobSuspend updates the suspend state of a giver cronjob
-func patchCronjobSuspend(ctx context.Context, cs *kubernetes.Clientset, ns, c string, suspend bool) error {
+func patchCronjobSuspend(ctx context.Context, l zerolog.Logger, cs *kubernetes.Clientset, ns, c string, suspend bool) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, err := cs.BatchV1beta1().CronJobs(ns).Get(ctx, c, metav1.GetOptions{})
 		if err != nil {

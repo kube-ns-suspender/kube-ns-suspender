@@ -35,7 +35,7 @@ func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, de
 				Msgf("scaling %s from 0 to %d replicas", d.Name, repl)
 			// patch the deployment
 			if !dr {
-				if err := patchDeploymentReplicas(ctx, cs, ns, d.Name, repl); err != nil {
+				if err := patchDeploymentReplicas(ctx, l, cs, ns, d.Name, repl); err != nil {
 					return err
 				}
 			}
@@ -59,7 +59,7 @@ func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, 
 				Msgf("scaling %s from %d to 0 replicas", d.Name, repl)
 			// patch the deployment if -dryrun is not set
 			if !dr {
-				if err := patchDeploymentReplicas(ctx, cs, ns, d.Name, 0); err != nil {
+				if err := patchDeploymentReplicas(ctx, l, cs, ns, d.Name, 0); err != nil {
 					return err
 				}
 			}
@@ -72,7 +72,7 @@ func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, 
 }
 
 // patchDeploymentReplicas updates the number of replicas of a given deployment
-func patchDeploymentReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, d string, repl int) error {
+func patchDeploymentReplicas(ctx context.Context, l zerolog.Logger, cs *kubernetes.Clientset, ns, d string, repl int) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, err := cs.AppsV1().Deployments(ns).Get(ctx, d, metav1.GetOptions{})
 		if err != nil {
@@ -81,7 +81,10 @@ func patchDeploymentReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, 
 		// if we want 0 replicas, it means that we are suspending the namespace,
 		// so before adjusting the replicas count, we want to save it for later
 		if repl == 0 {
-			result.Annotations["kube-ns-suspender/originalReplicas"] = strconv.Itoa(int(*result.Spec.Replicas))
+			original := strconv.Itoa(int(*result.Spec.Replicas))
+			l.Trace().Str("object", "deployment").Str("deployment", d).Msgf("current number of replicas: %d", *result.Spec.Replicas)
+			result.Annotations["kube-ns-suspender/originalReplicas"] = original
+			l.Trace().Str("object", "deployment").Str("deployment", d).Msgf("setting original replicas to %s", original)
 		}
 		result.Spec.Replicas = flip(int32(repl))
 		_, err = cs.AppsV1().Deployments(ns).Update(ctx, result, metav1.UpdateOptions{})

@@ -252,7 +252,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					sLogger.Error().
 						Err(err).
 						Str("object", "statefulset").
-						Msg("suspended steatfulsets conformity checks failed")
+						Msg("suspended statefulsets conformity checks failed")
 				}
 				wg.Done()
 			}()

@@ -27,7 +27,7 @@ func checkRunningStatefulsetsConformity(ctx context.Context, l zerolog.Logger, s
 				Str("statefulset", ss.Name).
 				Msgf("scaling %s from 0 to %d replicas", ss.Name, repl)
 			// patch the statefulset
-			if err := patchStatefulsetReplicas(ctx, cs, ns, ss.Name, repl); err != nil {
+			if err := patchStatefulsetReplicas(ctx, l, cs, ns, ss.Name, repl); err != nil {
 				return err
 			}
 		}
@@ -49,7 +49,7 @@ func checkSuspendedStatefulsetsConformity(ctx context.Context, l zerolog.Logger,
 				Str("statefulset", ss.Name).
 				Msgf("scaling %s from %d to 0 replicas", ss.Name, repl)
 			// patch the deployment
-			if err := patchStatefulsetReplicas(ctx, cs, ns, ss.Name, 0); err != nil {
+			if err := patchStatefulsetReplicas(ctx, l, cs, ns, ss.Name, 0); err != nil {
 				return err
 			}
 		}
@@ -61,7 +61,7 @@ func checkSuspendedStatefulsetsConformity(ctx context.Context, l zerolog.Logger,
 }
 
 // patchStatefulsetSuspend updates the number of replicas of a given statefulset
-func patchStatefulsetReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, ss string, repl int) error {
+func patchStatefulsetReplicas(ctx context.Context, l zerolog.Logger, cs *kubernetes.Clientset, ns, ss string, repl int) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, err := cs.AppsV1().StatefulSets(ns).Get(ctx, ss, metav1.GetOptions{})
 		if err != nil {
@@ -70,7 +70,9 @@ func patchStatefulsetReplicas(ctx context.Context, cs *kubernetes.Clientset, ns,
 		// if we want 0 replicas, it means that we are suspending the namespace,
 		// so before adjusting the replicas count, we want to save it for later
 		if repl == 0 {
-			result.Annotations["kube-ns-suspender/originalReplicas"] = strconv.Itoa(int(*result.Spec.Replicas))
+			original := strconv.Itoa(int(*result.Spec.Replicas))
+			result.Annotations["kube-ns-suspender/originalReplicas"] = original
+			l.Trace().Str("object", "statefulset").Str("statefulset", ss).Msgf("setting original replicas to %s", original)
 		}
 		result.Spec.Replicas = flip(int32(repl))
 		_, err = cs.AppsV1().StatefulSets(ns).Update(ctx, result, metav1.UpdateOptions{})
