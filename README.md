@@ -16,6 +16,7 @@ Kubernetes controller managing namespaces life cycle.
       - [On resources](#on-resources)
         - [Deployments and Stateful Sets](#deployments-and-stateful-sets)
         - [Cronjobs](#cronjobs)
+  - [Development flow](#development-flow)
   - [Contributing](#contributing)
   - [License](#license)
 
