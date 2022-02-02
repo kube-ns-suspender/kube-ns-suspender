@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: misc-depl
-  namespace: plop
+  namespace: kube-ns-suspender-testing
   labels:
     app: misc
   annotations:

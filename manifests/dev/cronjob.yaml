@@ -2,7 +2,7 @@ apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
   name: hello
-  namespace: plop
+  namespace: kube-ns-suspender-testing
 spec:
   suspend: false
   schedule: "*/3 * * * *"

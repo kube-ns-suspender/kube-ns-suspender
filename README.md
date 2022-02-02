@@ -86,6 +86,35 @@ As those resources have a `spec.replicas` value, they must have a `kube-ns-suspe
 
 Cronjobs have a `spec.suspend` value that indicates if they must be runned or not. As this value is a boolean, **no other annotations are required**.
 
+## Development flow
+
+To test the modifications in real-time, this project uses [`devspace`](https://devspace.sh/). It is configured to use the manifests in `manifests/dev/`.
+
+First, set the namespace to use:
+
+```
+devspace use namespace kube-ns-suspender-testing
+```
+
+Then deploy the manifests:
+
+```
+devspace dev
+```
+
+> :warning:
+> 
+> `devspace` will deploy the manifests in the cluster set by the current context. be sure to **not** deploy in staging or production.
+>
+
+Once the dev deployment is over, you'll have access to a shell in the container. You can start developing!
+
+When you are done, you can stop everything by closing your shell in the container and running:
+
+```
+devspace purge
+```
+
 ## Contributing
 
 /* add CONTRIBUTING file at root */

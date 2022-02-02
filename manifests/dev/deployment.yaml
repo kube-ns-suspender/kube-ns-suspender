@@ -4,6 +4,7 @@ metadata:
   name: kube-ns-suspender-depl
   labels:
     app: kube-ns-suspender
+  namespace: kube-ns-suspender-testing
 spec:
   replicas: 1
   selector:
