@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-ns-suspender-testing-namespace
+  annotations:
+    kube-ns-suspender/dailySuspendTime: "4:00PM"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: kube-ns-suspender-testing-namespace
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: nginx
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+  namespace: kube-ns-suspender-testing-namespace
+  annotations:
+spec:
+  selector:
+    matchLabels:
+      app: nginx # has to match .spec.template.metadata.labels
+  serviceName: "nginx"
+  replicas: 3 # by default is 1
+  template:
+    metadata:
+      labels:
+        app: nginx # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: nginx
+        image: k8s.gcr.io/nginx-slim:0.8
+        ports:
+        - containerPort: 80
+          name: web
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: misc-depl
+  namespace: kube-ns-suspender-testing-namespace
+  labels:
+    app: misc
+  annotations:
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: misc
+  template:
+    metadata:
+      labels:
+        app: misc
+    spec:
+      containers:
+      - name: misc
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+---
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: hello
+  namespace: kube-ns-suspender-testing-namespace
+spec:
+  suspend: false
+  schedule: "*/3 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - date; echo Hello from the Kubernetes cluster; sleep 120
+          restartPolicy: OnFailure

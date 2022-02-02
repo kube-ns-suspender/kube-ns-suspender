@@ -97,7 +97,13 @@ First, set the namespace to use:
 devspace use namespace kube-ns-suspender-testing
 ```
 
-Then deploy the manifests:
+Deploy the testing namespace with mock resources:
+
+```
+kubectl apply -f manifests/testing-namespace
+```
+
+Then deploy your dev version of `kube-ns-suspender`:
 
 ```
 devspace dev
@@ -105,7 +111,7 @@ devspace dev
 
 > :warning:
 > 
-> `devspace` will deploy the manifests in the cluster set by the current context. be sure to **not** deploy in staging or production.
+> `devspace` and `kubectl` will deploy the manifests in the cluster set by the current context. be sure to **not** deploy in staging or production.
 >
 
 Once the dev deployment is over, you'll have access to a shell in the container. You can start developing!
@@ -114,6 +120,12 @@ When you are done, you can stop everything by closing your shell in the containe
 
 ```
 devspace purge
+```
+
+and:
+
+```
+kubectl delete -f manifests/testing-namespace/ && kubectl delete ns kube-ns-suspender-testing-namespace
 ```
 
 ## Contributing
