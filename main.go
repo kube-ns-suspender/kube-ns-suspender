@@ -23,8 +23,8 @@ func main() {
 	fs.StringVar(&opt.LogLevel, "log-level", "debug", "Log level")
 	fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
 	fs.StringVar(&opt.Prefix, "prefix", "kube-ns-suspender/", "Prefix to use for annotations")
+	fs.StringVar(&opt.RunningDuration, "running-duration", "4h", "Running duration")
 	fs.IntVar(&opt.WatcherIdle, "watcher-idle", 15, "Watcher idle duration (in seconds)")
-	fs.IntVar(&opt.RunningDuration, "running-duration", 4, "Running duration (in hours)")
 	fs.BoolVar(&opt.DryRun, "dry-run", false, "Run in dry run mode")
 	fs.BoolVar(&opt.NoKubeWarnings, "no-kube-warnings", false, "Disable Kubernetes warnings")
 	fs.BoolVar(&opt.HumanLogs, "human", false, "Disable JSON logging")
@@ -48,7 +48,7 @@ func main() {
 
 	eng.Logger.Debug().Msgf("timezone: %s", time.Local.String())
 	eng.Logger.Debug().Msgf("watcher idle: %s", time.Duration(eng.Options.WatcherIdle)*time.Second)
-	eng.Logger.Debug().Msgf("running duration: %s", time.Duration(eng.Options.RunningDuration)*time.Hour)
+	eng.Logger.Debug().Msgf("running duration: %s", eng.RunningDuration)
 	eng.Logger.Debug().Msgf("log level: %s", eng.Options.LogLevel)
 	eng.Logger.Debug().Msgf("json logging: %v", !eng.Options.HumanLogs)
 

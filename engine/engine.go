@@ -21,12 +21,13 @@ type Engine struct {
 	Wl                    chan v1.Namespace
 	MetricsServ           metrics.Server
 	RunningNamespacesList map[string]time.Time
+	RunningDuration       time.Duration
 	Options               Options
 }
 
 type Options struct {
 	WatcherIdle                       int
-	RunningDuration                   int
+	RunningDuration                   string
 	LogLevel                          string
 	TZ                                string
 	Prefix                            string
@@ -54,6 +55,12 @@ func New(opt Options) (*Engine, error) {
 	if e.Options.Prefix[len(e.Options.Prefix)-1] != '/' {
 		e.Options.Prefix = e.Options.Prefix + "/"
 	}
+
+	e.RunningDuration, err = time.ParseDuration(opt.RunningDuration)
+	if err != nil {
+		return nil, err
+	}
+
 	return &e, nil
 }
 
