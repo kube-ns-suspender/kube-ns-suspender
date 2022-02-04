@@ -60,7 +60,6 @@ Namespaces watched by `kube-ns-suspender` can be in 3 differents states:
 
 * Running: the namespace is "up", and all the resources have the desired number of replicas.
 * Suspended: the namespace is "paused", and all the supported resources are scaled down to 0 or suspended.
-* Running Forced: the namespace has been suspended, and then reactivated manually. It will be "running" for a pre-defined duration then will go back to the "suspended" state.
 
 ### Annotations
 
@@ -71,7 +70,6 @@ Annotations are employed to save the original state of a resource.
 In order for a namespace to be watched by the controller, it needs to have the `kube-ns-suspender/desiredState` annotation set to any of the supported values, which are:
 
 * `Running`
-* `RunningForced`
 * `Suspended`
 
 To be suspended at a given time, a namespace must have the annotation `kube-ns-suspender/suspendAt` set to a valid value.
@@ -111,7 +109,7 @@ devspace dev
 
 > :warning:
 > 
-> `devspace` and `kubectl` will deploy the manifests in the cluster set by the current context. be sure to **not** deploy in staging or production.
+> `devspace` and `kubectl` will deploy the manifests in the cluster set by the current context. be sure to **not** deploy in the wrong cluster.
 >
 
 Once the dev deployment is over, you'll have access to a shell in the container. You can start developing!
@@ -125,7 +123,7 @@ devspace purge
 and:
 
 ```
-kubectl delete -f manifests/testing-namespace/ && kubectl delete ns kube-ns-suspender-testing-namespace
+kubectl delete -f manifests/testing-namespace/
 ```
 
 ## Contributing
