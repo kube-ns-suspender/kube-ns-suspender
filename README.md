@@ -17,6 +17,7 @@ Kubernetes controller managing namespaces life cycle.
         - [Deployments and Stateful Sets](#deployments-and-stateful-sets)
         - [Cronjobs](#cronjobs)
   - [Development flow](#development-flow)
+  - [Testing](#testing)
   - [Contributing](#contributing)
   - [License](#license)
 
@@ -125,6 +126,10 @@ and:
 ```
 kubectl delete -f manifests/testing-namespace/
 ```
+
+## Testing
+
+The controller at each PR and push using [bats-detik](https://github.com/bats-core/bats-detik).
 
 ## Contributing
 
