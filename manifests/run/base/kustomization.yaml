@@ -6,3 +6,4 @@ resources:
   - rbac.yaml
   - service.yaml
   - serviceMonitor.yaml
+  - ingress.yaml
