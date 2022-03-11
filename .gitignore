@@ -2,3 +2,5 @@
 .devspace/
 ./manifests/dev/*
 out/
+
+tools/bin/

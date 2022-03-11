@@ -14,6 +14,16 @@ setup() {
     [ ! -f ${BATS_PARENT_TMPNAME}.skip ] || skip "skip remaining tests"
 }
 
+@test "test kubectl config and access" {
+    run kubectl version
+    [ "$status" -eq 0 ]
+}
+
+@test "create testing namespace" {
+    run kubectl create ns kube-ns-suspender-testing
+    [ "$status" -eq 0 ]
+}
+
 @test "deploy kube-ns-suspender" {
     run kubectl -n kube-ns-suspender-testing apply -f manifests/dev/
     [ "$status" -eq 0 ]

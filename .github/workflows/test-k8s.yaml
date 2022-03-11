@@ -9,8 +9,8 @@ jobs:
       - uses: engineerd/setup-kind@v0.5.0
         with :
           version: "v0.11.1"
+          config: "./tests/config/kind-config.yaml"
       - name: Testing
         run: |
           ./tests/setup.sh
-          kubectl create ns kube-ns-suspender-testing
           time bats ./tests/detik.sh

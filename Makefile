@@ -5,6 +5,9 @@ BINARY_NAME=kube-ns-suspender
 VERSION?=0.0.0
 DOCKER_REGISTRY?=
 
+# Tooling and testing
+KIND_VERSION:=v0.11.1
+
 GREEN  := $(shell tput -Txterm setaf 2)
 YELLOW := $(shell tput -Txterm setaf 3)
 WHITE  := $(shell tput -Txterm setaf 7)
@@ -39,6 +42,27 @@ ifeq ($(EXPORT_RESULT), true)
 	gocov convert profile.cov | gocov-xml > coverage.xml
 endif
 
+e2e: docker-build-tools ## Run End2End tests on a kubernetes cluster
+	$(eval TMP_DIR := $(shell mktemp -d))
+	$(eval KUBE_CONFIG := "${TMP_DIR}/kube.config")
+
+	@echo '${GREEN}---> Create Kind cluster${RESET}'
+	kind create cluster \
+		--kubeconfig=${KUBE_CONFIG}\
+		--config=./tests/config/kind-config.yaml
+
+	@echo '${GREEN}---> Run tests${RESET}'
+	docker run --rm -it \
+		--network=host \
+		--volume "${KUBE_CONFIG}:/root/.kube/config" \
+		--volume "${PWD}:/code" \
+		--workdir /code \
+		local/$(BINARY_NAME)-bats /code/tests/detik.sh
+
+e2e_cleanup: ## Cleanup End2End resources
+	kind delete cluster \
+		--name=kns-test
+
 ## Docker:
 docker-build: ## Use the Dockerfile to build the container
 	docker build --rm --tag $(BINARY_NAME) .
@@ -50,6 +74,18 @@ docker-release: ## Release the container with tag latest and version
 	docker push $(DOCKER_REGISTRY)/$(BINARY_NAME):latest
 	docker push $(DOCKER_REGISTRY)/$(BINARY_NAME):$(VERSION)
 
+## Tools:
+docker-build-tools: ## Use the Dockerfile to build the tools container
+	docker build -f tools/Dockerfile.bats -t local/$(BINARY_NAME)-bats tools/
+
+dl-kind: ## Donwload Kind (Kubernetes-in-Docker) for local testing
+	$(eval OS := "$(shell uname -s | tr [:upper:] [:lower:])")
+	@echo '${GREEN}Downloading Kind ${KIND_VERSION}:${RESET}'
+	curl --progress -Lo tools/bin/kind https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-${OS}-amd64
+	chmod +x tools/bin/kind
+	@echo '${YELLOW}Run this command before running e2e tests:${RESET}'
+	@echo 'export PATH="$${PWD}/tools/bin:$${PATH}"'
+
 ## Help:
 help: ## Show this help
 	@echo ''
@@ -58,6 +94,6 @@ help: ## Show this help
 	@echo ''
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} { \
-		if (/^[a-zA-Z_-]+:.*?##.*$$/) {printf "    ${YELLOW}%-20s${GREEN}%s${RESET}\n", $$1, $$2} \
+		if (/^[0-9a-zA-Z_-]+:.*?##.*$$/) {printf "    ${YELLOW}%-20s${GREEN}%s${RESET}\n", $$1, $$2} \
 		else if (/^## .*$$/) {printf "  ${CYAN}%s${RESET}\n", substr($$1,4)} \
 		}' $(MAKEFILE_LIST)
