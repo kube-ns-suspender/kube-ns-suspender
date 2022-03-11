@@ -5,5 +5,6 @@ resources:
   - deployment.yaml
   - rbac.yaml
   - service.yaml
+  - service-ui.yaml
   - serviceMonitor.yaml
   - ingress.yaml
