@@ -22,3 +22,5 @@ spec:
         ports:
         - name: metrics
           containerPort: 2112
+        - name: webui
+          containerPort: 8080

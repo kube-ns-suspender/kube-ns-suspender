@@ -1,0 +1,60 @@
+<!doctype html>
+
+{{ template "head.html" }}
+
+{{ template "style.html" }}
+<header>
+  <div class="navbar">
+    <a href="/"><i class="fa fa-fw fa-play-circle"></i> Unsuspend a namespace</a>
+    <a class="active" href="/list"><i class="fa fa-fw fa-list"></i> See all namespaces</a>
+    <a href="/bug"><i class="fa fa-fw fa-bug"></i> Found a bug?</a>
+    <a style="float: right" href="https://github.com/govirtuo/kube-ns-suspender" target="_blank"><i class="fa fa-fw fa-github"></i> Project page</a>
+  </div>
+</header>
+
+<body>
+    <h2>Namespaces list</h2>
+    <input type="text" id="searchBar" onkeyup="search()" placeholder="Search for namespaces...">
+
+    <table id="namespacesTable">
+      <tr class="header">
+        <th style="width:60%;">Namespace</th>
+        <th style="width:40%;">State</th>
+      </tr>
+      {{range .Namespaces}}
+        <tr>
+          <td><code>{{.Name}}</code></td>
+          <td>{{.State}}</td>
+        </tr>
+      {{end}}
+    </table>
+      </table>
+      <br>
+      <button class="button" onclick="window.location.reload();"><i class="fa fa-refresh" aria-hidden="true"></i> Refresh page</button>
+</body>
+
+<script>
+function search() {
+  // Declare variables
+  var input, filter, table, tr, td, i, txtValue;
+  input = document.getElementById("searchBar");
+  filter = input.value.toUpperCase();
+  table = document.getElementById("namespacesTable");
+  tr = table.getElementsByTagName("tr");
+
+  // Loop through all table rows, and hide those who don't match the search query
+  for (i = 0; i < tr.length; i++) {
+    td = tr[i].getElementsByTagName("td")[0];
+    if (td) {
+      txtValue = td.textContent || td.innerText;
+      if (txtValue.toUpperCase().indexOf(filter) > -1) {
+        tr[i].style.display = "";
+      } else {
+        tr[i].style.display = "none";
+      }
+    }
+  }
+}
+</script>
+{{ template "footer.html" }}
+</html>

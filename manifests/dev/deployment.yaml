@@ -19,3 +19,6 @@ spec:
       containers:
       - name: kube-ns-suspender
         image: ghcr.io/govirtuo/kube-ns-suspender
+        ports:
+        - name: webui
+          containerPort: 8080

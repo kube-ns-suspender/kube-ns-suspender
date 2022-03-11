@@ -9,6 +9,7 @@ import (
 
 	"github.com/govirtuo/kube-ns-suspender/engine"
 	"github.com/govirtuo/kube-ns-suspender/metrics"
+	"github.com/govirtuo/kube-ns-suspender/webui"
 	"github.com/rs/zerolog/log"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -28,6 +29,8 @@ func main() {
 	fs.BoolVar(&opt.DryRun, "dry-run", false, "Run in dry run mode")
 	fs.BoolVar(&opt.NoKubeWarnings, "no-kube-warnings", false, "Disable Kubernetes warnings")
 	fs.BoolVar(&opt.HumanLogs, "human", false, "Disable JSON logging")
+	fs.BoolVar(&opt.EmbededUI, "ui-embeded", false, "Start UI in background")
+	fs.BoolVar(&opt.WebUIOnly, "ui-only", false, "Start UI only")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}
@@ -45,6 +48,23 @@ func main() {
 		log.Fatal().Err(err).Msg("cannot create new engine")
 	}
 	eng.Logger.Info().Msgf("engine successfully created in %s", time.Since(start))
+
+	// start web ui
+	if eng.Options.EmbededUI || eng.Options.WebUIOnly {
+		go func() {
+			uiLogger := eng.Logger.With().
+				Str("routine", "webui").Logger()
+			if err := webui.Start(uiLogger, "8080", eng.Options.Prefix); err != nil {
+				uiLogger.Fatal().Err(err).Msg("web UI failed")
+			}
+		}()
+		eng.Logger.Info().Msg("web UI successfully created")
+		if eng.Options.WebUIOnly {
+			eng.Logger.Info().Msg("starting web UI only")
+			// if we want only the webui, we have to wait here forever after the creation
+			select {}
+		}
+	}
 
 	eng.Logger.Debug().Msgf("timezone: %s", time.Local.String())
 	eng.Logger.Debug().Msgf("watcher idle: %s", time.Duration(eng.Options.WatcherIdle)*time.Second)

@@ -43,9 +43,9 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 				if state, ok := n.Annotations[eng.Options.Prefix+"desiredState"]; ok {
 					// increment variables for metrics
 					switch state {
-					case running:
+					case Running:
 						runningNs++
-					case suspended:
+					case Suspended:
 						suspendedNs++
 					default:
 						unknownNs++

@@ -51,7 +51,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					if err != nil {
 						return err
 					}
-					res.Annotations[eng.Options.Prefix+"desiredState"] = suspended
+					res.Annotations[eng.Options.Prefix+"desiredState"] = Suspended
 					var updateOpts metav1.UpdateOptions
 					// if the flag -dryrun is used, do not update resources
 					if eng.Options.DryRun {
@@ -70,7 +70,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					sLogger.Info().
 						Msgf("suspended namespace %s based on daily suspend time", n.Name)
 				}
-				desiredState = suspended
+				desiredState = Suspended
 			} else {
 				eng.Mutex.Unlock()
 				sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
@@ -79,7 +79,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		}
 
 		switch desiredState {
-		case running:
+		case Running:
 			if date, ok := eng.RunningNamespacesList[n.Name]; !ok {
 				// first time we see this namespace as running, so we simply add
 				// it to the map with the current time
@@ -130,7 +130,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					if err != nil {
 						return err
 					}
-					res.Annotations[eng.Options.Prefix+"desiredState"] = suspended
+					res.Annotations[eng.Options.Prefix+"desiredState"] = Suspended
 					delete(res.Annotations, eng.Options.Prefix+"auto_nextSuspendTime")
 
 					var updateOpts metav1.UpdateOptions
@@ -150,11 +150,11 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				} else {
 					sLogger.Info().
 						Msgf("suspended namespace %s based on uptime", n.Name)
-					desiredState = suspended
+					desiredState = Suspended
 					delete(eng.RunningNamespacesList, n.Name)
 				}
 			}
-		case suspended:
+		case Suspended:
 			// TODO: think about removing ²the annotation auto_nextSuspendTime
 			// here. Elsewhere, it will stay until the next running call.
 		default:
@@ -195,7 +195,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		}
 		var wg sync.WaitGroup
 		switch desiredState {
-		case running:
+		case Running:
 			wg.Add(3)
 			// check and patch deployments
 			go func() {
@@ -229,7 +229,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				}
 				wg.Done()
 			}()
-		case suspended:
+		case Suspended:
 			wg.Add(3)
 			// check and patch deployments
 			go func() {
