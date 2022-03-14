@@ -1,5 +1,13 @@
 name: "E2E k8s testing"
-on: [pull_request, push]
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
 
 jobs:
   kind:
