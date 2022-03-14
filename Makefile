@@ -55,6 +55,7 @@ e2e: docker-build-tools ## Run End2End tests on a kubernetes cluster
 	docker run --rm -it \
 		--network=host \
 		--volume "${KUBE_CONFIG}:/root/.kube/config" \
+		--volume "${PWD}/tmp/detik/:/tmp/detik/" \
 		--volume "${PWD}:/code" \
 		--workdir /code \
 		local/$(BINARY_NAME)-bats /code/tests/detik.sh

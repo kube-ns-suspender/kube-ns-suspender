@@ -2,5 +2,3 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: kube-ns-suspender-testing
-  annotations:
-    kube-ns-suspender/dailySuspendTime: "4:00PM"
