@@ -61,7 +61,7 @@ e2e: docker-build-tools e2e_cleanup ## Run End2End tests on a kubernetes cluster
 		--volume "${PWD}/tmp/detik/:/tmp/detik/" \
 		--volume "${PWD}:/code" \
 		--workdir /code \
-		local/$(BINARY_NAME)-bats /code/tests/detik.sh
+		local/$(BINARY_NAME)-bats /code/tests/
 
 	@echo '${GREEN}---> Export Kind logs${RESET}'
 	mkdir -p tmp/kind

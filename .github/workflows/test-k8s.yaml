@@ -22,7 +22,7 @@ jobs:
       - name: Setup Testing
         run: ./tests/scripts/setup.sh
       - name: Testing
-        run: time bats ./tests/detik.sh
+        run: time bats ./tests/
       
       - name: Collect logs
         run: |

@@ -22,29 +22,29 @@ setup() {
 	debug  ""
 }
 
-@test "reset the debug file" {
+@test "${BATS_TEST_FILENAME} - reset the debug file" {
 	# This function is part of DETIK too
 	reset_debug
 }
 
 # == Init
 #
-@test "init - test kubectl config and access" {
+@test "${BATS_TEST_FILENAME} - init - test kubectl config and access" {
     run kubectl version
     [ "$status" -eq 0 ]
 }
 
-@test "init - create '${KNS_NAMESPACE}' namespace" {
+@test "${BATS_TEST_FILENAME} - init - create '${KNS_NAMESPACE}' namespace" {
     run kubectl create ns ${KNS_NAMESPACE}
     [ "$status" -eq 0 ]
 }
 
-@test "init - deploy kube-ns-suspender" {
+@test "${BATS_TEST_FILENAME} - init - deploy kube-ns-suspender" {
     run kubectl -n ${KNS_NAMESPACE} apply -f manifests/dev/
     [ "$status" -eq 0 ]
 }
 
-@test "init - check if kube-ns-suspender is up and running (wait max 6x10s)" {
+@test "${BATS_TEST_FILENAME} - init - check if kube-ns-suspender is up and running (wait max 6x10s)" {
     DETIK_CLIENT_NAMESPACE="${KNS_NAMESPACE}"
 
     run try "at most 6 times every 10s \
@@ -54,7 +54,7 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "init - deploy mock manifests" {
+@test "${BATS_TEST_FILENAME} - init - deploy mock manifests" {
     run kubectl apply -f manifests/testing-namespace/full.yaml
     [ "$status" -eq 0 ]
 }
@@ -63,7 +63,7 @@ setup() {
 #
 # === Pre-suspend
 #
-@test "deployments - check if pods 'misc-depl' are up and running (wait max 6x10s)" {
+@test "${BATS_TEST_FILENAME} - deployments - check if pods 'misc-depl' are up and running (wait max 6x10s)" {
     run try "at most 6 times every 10s \
             to get pods named 'misc-depl' \
             and verify that 'status' is 'running'"
@@ -71,28 +71,14 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "deployments - check the number of replicas (there should be 3)" {
+@test "${BATS_TEST_FILENAME} - deployments - check the number of replicas (there should be 3)" {
     run verify "there are 3 pods named 'misc-depl-*'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
 
-@test "statefulsets - check if pods 'web' are up and running (wait max 6x10s)" {
-    run try "at most 6 times every 10s \
-            to get pods named 'web' \
-            and verify that 'status' is 'running'"
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
-
-@test "statefulsets - check the number of replicas (there should be 3)" {
-    run verify "there are 3 pods named 'web'"
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
-
 # suspend the namespace
-@test "action - update the testing namespace to be suspended in the following minute" {
+@test "${BATS_TEST_FILENAME} - action - update the testing namespace to be suspended in the following minute" {
     run kubectl annotate --overwrite \
             ns kube-ns-suspender-testing-namespace \
             kube-ns-suspender/dailySuspendTime=$(LC_TIME=en_US.UTF-8 date +%I:%M%p -d@"$((`date +%s`+60 ))")
@@ -101,7 +87,7 @@ setup() {
 
 # === Post-suspend
 #
-@test "deployments - check if pods 'misc-depl-*' have 0 replicas up and running" {
+@test "${BATS_TEST_FILENAME} - deployments - check if pods 'misc-depl-*' have 0 replicas up and running" {
     run try "at most 12 times every 10s \
             to find 0 pod named 'misc-depl' \
             with 'status' being 'running'" 
@@ -109,16 +95,8 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "statefulsets - check if pods 'web' have 0 replicas up and running" {
-    run try "at most 12 times every 10s \
-            to find 0 pod named 'web' \
-            with 'status' being 'running'" 
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
-
 # unsuspend the namespace
-@test "action - unsuspend the namespace" {
+@test "${BATS_TEST_FILENAME} - action - unsuspend the namespace" {
     run kubectl annotate --overwrite \
         ns kube-ns-suspender-testing-namespace \
         kube-ns-suspender/desiredState=Running
@@ -127,7 +105,7 @@ setup() {
 
 # === Post-unsuspend
 #
-@test "deployments - check if pods are up and running again" {
+@test "${BATS_TEST_FILENAME} - deployments - check if pods are up and running again" {
     run try "at most 12 times every 10s \
             to get pods named 'misc-depl' \
             and verify that 'status' is 'running'"
@@ -135,22 +113,8 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "deployments - check if the number of replicas is back to original" {
+@test "${BATS_TEST_FILENAME} - deployments - check if the number of replicas is back to original" {
     run verify "there are 3 pods named 'misc-depl'"
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
-
-@test "statefulset - check if pods are up and running again" {
-    run try "at most 12 times every 10s \
-            to get pods named 'web' \
-            and verify that 'status' is 'running'"
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
-
-@test "statefulset - check if the number of replicas is back to original" {
-    run verify "there are 3 pods named 'web'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
