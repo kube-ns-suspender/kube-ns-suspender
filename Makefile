@@ -68,8 +68,13 @@ e2e: docker-build-tools e2e_cleanup ## Run End2End tests on a kubernetes cluster
 	kind export logs tmp/kind/ --name=kns-test
 
 e2e_cleanup: ## Cleanup End2End resources
+	@echo '${GREEN}---> Delete existing Kind cluster (if any)${RESET}'
 	kind delete cluster \
 		--name=kns-test
+
+	@echo '${GREEN}---> Delete "tmp/" directory ${RESET}'
+	rm -rf tmp/
+	mkdir -v tmp/
 
 ## Docker:
 docker-build: ## Use the Dockerfile to build the container
