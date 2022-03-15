@@ -12,6 +12,7 @@ env:
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
+    # Permissions for the Built-in, auto-loaded secrets.GITHUB_TOKEN
     permissions:
       contents: read
       packages: write
@@ -19,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+        #TODO:
+        # - [ ] Why no `fetch-depth: 0` option like in `release_build`
 
       - name: Log in to the Container registry
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
