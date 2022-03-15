@@ -27,22 +27,22 @@ setup() {
 	reset_debug
 }
 
-@test "test kubectl config and access" {
+@test "init - test kubectl config and access" {
     run kubectl version
     [ "$status" -eq 0 ]
 }
 
-@test "create '${KNS_NAMESPACE}' namespace" {
+@test "init - create '${KNS_NAMESPACE}' namespace" {
     run kubectl create ns ${KNS_NAMESPACE}
     [ "$status" -eq 0 ]
 }
 
-@test "deploy kube-ns-suspender" {
+@test "init - deploy kube-ns-suspender" {
     run kubectl -n ${KNS_NAMESPACE} apply -f manifests/dev/
     [ "$status" -eq 0 ]
 }
 
-@test "check if kube-ns-suspender is up and running" {
+@test "init - check if kube-ns-suspender is up and running (wait max 6x10s)" {
     DETIK_CLIENT_NAMESPACE="${KNS_NAMESPACE}"
 
     run try "at most 6 times every 10s \
@@ -52,12 +52,12 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "deploy mock manifests" {
+@test "init - deploy mock manifests" {
     run kubectl apply -f manifests/testing-namespace/full.yaml
     [ "$status" -eq 0 ]
 }
 
-@test "check if pods 'misc-depl-*' are up and running" {
+@test "deployments - check if pods 'misc-depl' are up and running (wait max 6x10s)" {
     run try "at most 6 times every 10s \
             to get pods named 'misc-depl' \
             and verify that 'status' is 'running'"
@@ -65,14 +65,14 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "check the number of replicas" {
+@test "deployments - check the number of replicas (there should be 3)" {
     run verify "there are 3 pods named 'misc-depl-*'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
 
 # suspend the namespace
-@test "update the testing namespace to be suspended in the following minute" {
+@test "action - update the testing namespace to be suspended in the following minute" {
     run kubectl annotate --overwrite \
             ns kube-ns-suspender-testing-namespace \
             kube-ns-suspender/dailySuspendTime=$(LC_TIME=en_US.UTF-8 date +%I:%M%p -d@"$((`date +%s`+60 ))")
@@ -81,7 +81,7 @@ setup() {
 
 # check the number of replicas
 # it should be 0
-@test "check if pods 'misc-depl-*' have 0 replicas up and running" {
+@test "deployments - check if pods 'misc-depl-*' have 0 replicas up and running" {
     run try "at most 12 times every 10s \
             to find 0 pod named 'misc-depl' \
             with 'status' being 'running'" 
@@ -90,7 +90,7 @@ setup() {
 }
 
 # unsuspend the namespace
-@test "unsuspend the namespace" {
+@test "action - unsuspend the namespace" {
     run kubectl annotate --overwrite \
         ns kube-ns-suspender-testing-namespace \
         kube-ns-suspender/desiredState=Running
@@ -98,7 +98,7 @@ setup() {
 }
 
 # check if the pods are up and running
-@test "check if pods are up and running again" {
+@test "deployments - check if pods are up and running again" {
     run try "at most 12 times every 10s \
             to get pods named 'misc-depl' \
             and verify that 'status' is 'running'"
@@ -108,7 +108,7 @@ setup() {
 
 # check the number of replicas
 # it should be 3
-@test "check if the number of replicas is back to original" {
+@test "deployments - check if the number of replicas is back to original" {
     run verify "there are 3 pods named 'misc-depl'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
