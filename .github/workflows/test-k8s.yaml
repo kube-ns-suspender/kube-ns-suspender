@@ -18,7 +18,23 @@ jobs:
         with :
           version: "v0.11.1"
           config: "./tests/config/kind-config.yaml"
+
+      - name: Setup Testing
+        run: ./tests/setup.sh
       - name: Testing
+        run: time bats ./tests/detik.sh
+      
+      - name: Collect logs
         run: |
-          ./tests/setup.sh
-          time bats ./tests/detik.sh
+          echo "---> DETIK logs"
+          cp -va /tmp/detik tmp/
+          echo "---> KIND logs"
+          mkdir -vp tmp/kind
+          kind export logs tmp/kind/
+
+      - name: Archive test logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: tests-logs
+          path: tmp/
+          retention-days: 5

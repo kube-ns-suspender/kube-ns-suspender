@@ -2,8 +2,6 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: kube-ns-suspender-testing-namespace
-  annotations:
-    kube-ns-suspender/dailySuspendTime: "4:00PM"
 ---
 apiVersion: v1
 kind: Service
@@ -25,7 +23,7 @@ kind: StatefulSet
 metadata:
   name: web
   namespace: kube-ns-suspender-testing-namespace
-  annotations:
+  annotations: {}
 spec:
   selector:
     matchLabels:
@@ -52,7 +50,7 @@ metadata:
   namespace: kube-ns-suspender-testing-namespace
   labels:
     app: misc
-  annotations:
+  annotations: {}
 spec:
   replicas: 3
   selector:
