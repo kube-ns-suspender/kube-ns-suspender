@@ -27,6 +27,8 @@ setup() {
 	reset_debug
 }
 
+# == Init
+#
 @test "init - test kubectl config and access" {
     run kubectl version
     [ "$status" -eq 0 ]
@@ -57,6 +59,10 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+# == Tests resources
+#
+# === Pre-suspend
+#
 @test "deployments - check if pods 'misc-depl' are up and running (wait max 6x10s)" {
     run try "at most 6 times every 10s \
             to get pods named 'misc-depl' \
@@ -71,6 +77,20 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+@test "statefulsets - check if pods 'web' are up and running (wait max 6x10s)" {
+    run try "at most 6 times every 10s \
+            to get pods named 'web' \
+            and verify that 'status' is 'running'"
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+@test "statefulsets - check the number of replicas (there should be 3)" {
+    run verify "there are 3 pods named 'web'"
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
 # suspend the namespace
 @test "action - update the testing namespace to be suspended in the following minute" {
     run kubectl annotate --overwrite \
@@ -79,11 +99,19 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-# check the number of replicas
-# it should be 0
+# === Post-suspend
+#
 @test "deployments - check if pods 'misc-depl-*' have 0 replicas up and running" {
     run try "at most 12 times every 10s \
             to find 0 pod named 'misc-depl' \
+            with 'status' being 'running'" 
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+@test "statefulsets - check if pods 'web' have 0 replicas up and running" {
+    run try "at most 12 times every 10s \
+            to find 0 pod named 'web' \
             with 'status' being 'running'" 
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
@@ -97,7 +125,8 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-# check if the pods are up and running
+# === Post-unsuspend
+#
 @test "deployments - check if pods are up and running again" {
     run try "at most 12 times every 10s \
             to get pods named 'misc-depl' \
@@ -106,10 +135,22 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-# check the number of replicas
-# it should be 3
 @test "deployments - check if the number of replicas is back to original" {
     run verify "there are 3 pods named 'misc-depl'"
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+@test "statefulset - check if pods are up and running again" {
+    run try "at most 12 times every 10s \
+            to get pods named 'web' \
+            and verify that 'status' is 'running'"
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+@test "statefulset - check if the number of replicas is back to original" {
+    run verify "there are 3 pods named 'web'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
@@ -118,6 +159,8 @@ teardown() {
     [ -n "$BATS_TEST_COMPLETED" ] || touch ${BATS_PARENT_TMPNAME}.skip
 }
 
+# Note: This step seems to not be run by CI jobs on GitHub Actions
+# but still usefull for local testing.
 teardown_file() {
     echo "----> teardown_file()"
 
@@ -127,3 +170,16 @@ teardown_file() {
     echo "Getting 'kube-ns-suspender' logs"
     kubectl -n ${KNS_NAMESPACE} logs ${knsPodName#pod/} > /tmp/detik/${knsPodName#pod/}.log
 }
+
+# Notes:
+#
+# - https://bats-core.readthedocs.io/en/stable/faq.html#how-can-i-check-if-a-test-failed-succeeded-during-teardown
+#   This could be used to collect logs only when tests failed rather than always.
+#
+# - https://bats-core.readthedocs.io/en/stable/faq.html#how-can-i-debug-a-failing-test
+#   Use appropriate `asserts_` for your task instead of raw bash comparisons.
+#   `asserts_` will print the output when the test fails while raw bash won’t.
+#   -> Same consequece: Display output only when it fails rather than always
+#
+# - https://bats-core.readthedocs.io/en/stable/writing-tests.html#special-variables
+# 
