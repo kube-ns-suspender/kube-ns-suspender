@@ -42,7 +42,7 @@ ifeq ($(EXPORT_RESULT), true)
 	gocov convert profile.cov | gocov-xml > coverage.xml
 endif
 
-e2e: docker-build-tools ## Run End2End tests on a kubernetes cluster
+e2e: docker-build-tools e2e_cleanup ## Run End2End tests on a kubernetes cluster
 	$(eval TMP_DIR := $(shell mktemp -d))
 	$(eval KUBE_CONFIG := "${TMP_DIR}/kube.config")
 
@@ -59,6 +59,10 @@ e2e: docker-build-tools ## Run End2End tests on a kubernetes cluster
 		--volume "${PWD}:/code" \
 		--workdir /code \
 		local/$(BINARY_NAME)-bats /code/tests/detik.sh
+
+	@echo '${GREEN}---> Export Kind logs${RESET}'
+	mkdir -p tmp/kind
+	kind export logs tmp/kind/ --name=kns-test
 
 e2e_cleanup: ## Cleanup End2End resources
 	kind delete cluster \
