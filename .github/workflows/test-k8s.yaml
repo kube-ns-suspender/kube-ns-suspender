@@ -20,7 +20,7 @@ jobs:
           config: "./tests/config/kind-config.yaml"
 
       - name: Setup Testing
-        run: ./tests/setup.sh        
+        run: ./tests/setup.sh
       - name: Testing
         run: time bats ./tests/detik.sh
       
