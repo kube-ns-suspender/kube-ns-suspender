@@ -9,24 +9,93 @@ on:
     branches:
       - main
 
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level' 
+        type: choice
+        options:
+        - info
+        - warning
+        - debug 
+        default: debug
+        required: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
-  kind:
+  build-image:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: BuildDocker image
+        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
+        with:
+          context: .
+          push: false
+          load: false
+          tags: ghcr.io/govirtuo/kube-ns-suspender:latest
+          outputs: type=docker,dest=/tmp/kube-ns-suspender_oci.tar
+
+      - name: Upload container image
+        uses: actions/upload-artifact@v2
+        with:
+          name: kube-ns-suspender_oci
+          path: /tmp/kube-ns-suspender_oci.tar
+          retention-days: 2
+
+  test-e2e:
+    needs: build-image
+    runs-on: ubuntu-latest
+    steps:
+      # Needed to get config and tests
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: kube-ns-suspender_oci
+          path: /tmp
+
+      - name: Load image into docker
+        run: |
+          docker load --input /tmp/kube-ns-suspender_oci.tar
+          docker image ls -a
 
       - uses: engineerd/setup-kind@v0.5.0
         with :
           version: "v0.11.1"
           config: "./tests/config/kind-config.yaml"
 
+      - name: Load image into kind
+        run: |
+          kind load docker-image ghcr.io/govirtuo/kube-ns-suspender:latest
+
       - name: Setup Testing
         run: ./tests/scripts/setup.sh
+
+      # TODO: Try to use the Makefile targets
       - name: Testing
         run: time bats ./tests/
 
+      # FIXME: Convert these following steps into post-actions otherwise we won't be able to access them when tests fail
       - name: Collect logs
+        if: ${{ failure() }}
         run: |
           echo "---> DETIK logs"
           cp -va /tmp/detik tmp/
@@ -35,8 +104,35 @@ jobs:
           kind export logs tmp/kind/
 
       - name: Archive test logs
+        if: ${{ failure() }}
         uses: actions/upload-artifact@v3
         with:
           name: tests-logs
           path: tmp/
           retention-days: 5
+
+  publish-image:
+    needs: test-e2e
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # Permissions for the Built-in, auto-loaded secrets.GITHUB_TOKEN
+    permissions:
+      contents: read
+      packages: write
+    
+    steps:
+      - name: Log in to the Container registry
+        uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      
