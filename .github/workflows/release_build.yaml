@@ -9,9 +9,11 @@ jobs:
   build:
     name: GoReleaser build
     runs-on: ubuntu-latest
+    #TODO:
+    # - [ ] Permissions for the Token ?
 
     steps:
-      - name: Check out code into the Go module directory
+      - name: Checkout repository
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
