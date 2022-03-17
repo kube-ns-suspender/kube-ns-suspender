@@ -19,3 +19,4 @@ spec:
       containers:
       - name: kube-ns-suspender
         image: ghcr.io/govirtuo/kube-ns-suspender
+        imagePullPolicy: IfNotPresent
