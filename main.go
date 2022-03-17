@@ -16,6 +16,13 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
+var (
+	// Version holds the build version
+	Version string
+	// BuildDate holds the build date
+	BuildDate string
+)
+
 func main() {
 	var opt engine.Options
 	var err error
@@ -45,6 +52,7 @@ func main() {
 		log.Fatal().Err(err).Msg("cannot create new engine")
 	}
 	eng.Logger.Info().Msgf("engine successfully created in %s", time.Since(start))
+	eng.Logger.Info().Msgf("kube-ns-suspender version %s (built %s)", Version, BuildDate)
 
 	eng.Logger.Debug().Msgf("timezone: %s", time.Local.String())
 	eng.Logger.Debug().Msgf("watcher idle: %s", time.Duration(eng.Options.WatcherIdle)*time.Second)

@@ -2,7 +2,7 @@ GOCMD=go
 GOTEST=$(GOCMD) test
 GOVET=$(GOCMD) vet
 BINARY_NAME=kube-ns-suspender
-VERSION?=0.0.0
+VERSION=$(shell git describe --tags)
 DOCKER_REGISTRY?=
 
 # Tooling and testing
@@ -51,6 +51,9 @@ e2e: docker-build-tools e2e_cleanup ## Run End2End tests on a kubernetes cluster
 		--kubeconfig=${KUBE_CONFIG}\
 		--config=./tests/config/kind-config.yaml
 
+	@echo '${GREEN}---> Loading local image into Kind cluster${RESET}'
+	kind load docker-image ghcr.io/govirtuo/kube-ns-suspender:latest --name=kns-test
+
 	@echo '${GREEN}---> Run tests${RESET}'
 	docker run --rm -it \
 		--network=host \
@@ -70,10 +73,10 @@ e2e_cleanup: ## Cleanup End2End resources
 
 ## Docker:
 docker-build: ## Use the Dockerfile to build the container
-	docker build --rm --tag $(BINARY_NAME) .
+	docker build --rm --tag $(BINARY_NAME) --build-arg VERSION=${VERSION} --build-arg BUILD_DATE=$(shell date +%s) .
+	docker tag $(BINARY_NAME) $(DOCKER_REGISTRY)/$(BINARY_NAME):latest
 
 docker-release: ## Release the container with tag latest and version
-	docker tag $(BINARY_NAME) $(DOCKER_REGISTRY)/$(BINARY_NAME):latest
 	docker tag $(BINARY_NAME) $(DOCKER_REGISTRY)/$(BINARY_NAME):$(VERSION)
 
 	docker push $(DOCKER_REGISTRY)/$(BINARY_NAME):latest
@@ -102,3 +105,6 @@ help: ## Show this help
 		if (/^[0-9a-zA-Z_-]+:.*?##.*$$/) {printf "    ${YELLOW}%-20s${GREEN}%s${RESET}\n", $$1, $$2} \
 		else if (/^## .*$$/) {printf "  ${CYAN}%s${RESET}\n", substr($$1,4)} \
 		}' $(MAKEFILE_LIST)
+
+version: ## Display current version
+	@echo ${VERSION}
