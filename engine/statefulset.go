@@ -22,7 +22,6 @@ func checkRunningStatefulsetsConformity(ctx context.Context, l zerolog.Logger, s
 			}
 
 			l.Info().
-				Str("namespace", ns).
 				Str("statefulset", ss.Name).
 				Msgf("scaling %s from 0 to %d replicas", ss.Name, repl)
 			// patch the statefulset
@@ -40,7 +39,6 @@ func checkSuspendedStatefulsetsConformity(ctx context.Context, l zerolog.Logger,
 		if repl != 0 {
 			// TODO: what about fixing the annotation original Replicas here ?
 			l.Info().
-				Str("namespace", ns).
 				Str("statefulset", ss.Name).
 				Msgf("scaling %s from %d to 0 replicas", ss.Name, repl)
 			// patch the deployment

@@ -5,6 +5,9 @@ ENV GO111MODULE=on \
     GOOS=linux \
     GOARCH=amd64
 
+ARG VERSION=n/a \
+    BUILD_DATE=n/a
+
 WORKDIR /build
 
 COPY go.mod .
@@ -13,9 +16,13 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o kube-ns-suspender . && \
-    strip kube-ns-suspender && \
-    /usr/local/bin/upx -9 kube-ns-suspender
+RUN go build \
+        -ldflags="-X 'main.Version=${VERSION}' -X 'main.BuildDate=${BUILD_DATE}'" \
+        -o kube-ns-suspender \
+        . \
+    && strip kube-ns-suspender \
+    && /usr/local/bin/upx -9 kube-ns-suspender
+
 
 FROM gcr.io/distroless/base-debian10
 

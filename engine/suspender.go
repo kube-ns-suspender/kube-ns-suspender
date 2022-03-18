@@ -16,21 +16,24 @@ import (
 // it will read and write namespaces' annotations, and scale resources.
 func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 	eng.Mutex.Lock()
-	sLogger := eng.Logger.With().
-		Str("routine", "suspender").Logger()
 	eng.RunningNamespacesList = make(map[string]time.Time)
+	eng.Logger.Info().Str("routine", "suspender").Msg("suspender started")
 	eng.Mutex.Unlock()
-
-	sLogger.Info().
-		Msg("suspender started")
 
 	for {
 		// wait for the next namespace to check
 		n := <-eng.Wl
 		start := time.Now()
+
+		// we create a sublogger to avoid "namespace" field duplication at each
+		// loop
+		eng.Mutex.Lock()
+		sLogger := eng.Logger.With().Str("routine", "suspender").Str("namespace", n.Name).Logger()
+		eng.Mutex.Unlock()
+
 		sLogger.Trace().Msgf("namespace %s received from watcher", n.Name)
 		eng.Mutex.Lock()
-		sLogger = sLogger.With().Str("namespace", n.Name).Logger()
+
 		desiredState, ok := n.Annotations[eng.Options.Prefix+"desiredState"]
 		if !ok {
 			// the annotation does not exist, which means that it is the first

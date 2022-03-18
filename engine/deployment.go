@@ -29,7 +29,6 @@ func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, de
 			}
 
 			l.Info().
-				Str("namespace", ns).
 				Str("deployment", d.Name).
 				Msgf("scaling %s from 0 to %d replicas", d.Name, repl)
 			// patch the deployment
@@ -49,7 +48,6 @@ func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, 
 		if repl != 0 {
 			// TODO: what about fixing the annotation original Replicas here ?
 			l.Info().
-				Str("namespace", ns).
 				Str("deployment", d.Name).
 				Msgf("scaling %s from %d to 0 replicas", d.Name, repl)
 			// patch the deployment if -dryrun is not set

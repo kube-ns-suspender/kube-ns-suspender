@@ -14,7 +14,6 @@ func checkRunningCronjobsConformity(ctx context.Context, l zerolog.Logger, cronj
 	for _, c := range cronjobs {
 		if *c.Spec.Suspend {
 			l.Info().
-				Str("namespace", ns).
 				Str("cronjob", c.Name).
 				Msgf("updating %s from suspend: true to suspend: false", c.Name)
 			if err := patchCronjobSuspend(ctx, cs, ns, c.Name, false); err != nil {
@@ -29,7 +28,6 @@ func checkSuspendedCronjobsConformity(ctx context.Context, l zerolog.Logger, cro
 	for _, c := range cronjobs {
 		if !*c.Spec.Suspend {
 			l.Info().
-				Str("namespace", ns).
 				Str("cronjob", c.Name).
 				Msgf("updating %s from suspend: false to suspend: true", c.Name)
 			if err := patchCronjobSuspend(ctx, cs, ns, c.Name, true); err != nil {
