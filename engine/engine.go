@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	running   = "Running"
-	suspended = "Suspended"
+	Running   = "Running"
+	Suspended = "Suspended"
 )
 
 type Engine struct {
@@ -32,6 +32,7 @@ type Options struct {
 	TZ                                string
 	Prefix                            string
 	DryRun, NoKubeWarnings, HumanLogs bool
+	EmbededUI, WebUIOnly              bool
 }
 
 // New returns a new engine instance

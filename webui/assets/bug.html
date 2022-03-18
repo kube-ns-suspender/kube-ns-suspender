@@ -1,0 +1,27 @@
+<!doctype html>
+
+{{ template "head.html" }}
+
+{{ template "style.html" }}
+
+  <header>
+    <div class="navbar">
+      <a href="/"><i class="fa fa-fw fa-play-circle"></i> Unsuspend a namespace</a>
+      <a href="/list"><i class="fa fa-fw fa-list"></i> See all namespaces</a>
+      <a class="active" href="/bug"><i class="fa fa-fw fa-bug"></i> Found a bug?</a>
+      <a style="float: right" href="https://github.com/govirtuo/kube-ns-suspender" target="_blank"><i class="fa fa-fw fa-github"></i> Project page</a>
+    </div>
+  </header>
+
+<body>
+    <h2>Did you found a bug?</h2>
+    <p>You can report it using:</p>
+    <ul>
+        <li><a href="https://github.com/govirtuo/kube-ns-suspender/issues/new/choose" target="_blank"><i class="fa fa-fw fa-github"></i> GitHub issues</a></li>
+        <li><a href="https://virtuoteam.slack.com/archives/CRLADRQSX" target="_blank"><i class="fa fa-fw fa-slack"></i> #devops-support</a></li>
+    </ul>
+    <p>Please provide as much information as possible: what did you do, what did you expect, what happened instead...</p>
+    <br>
+</body>
+{{ template "footer.html" }}
+</html>

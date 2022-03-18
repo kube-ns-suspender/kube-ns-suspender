@@ -20,3 +20,6 @@ spec:
       - name: kube-ns-suspender
         image: ghcr.io/govirtuo/kube-ns-suspender
         imagePullPolicy: IfNotPresent
+        ports:
+        - name: webui
+          containerPort: 8080
