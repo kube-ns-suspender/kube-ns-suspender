@@ -22,27 +22,34 @@ setup() {
 	debug  ""
 }
 
-@test "reset the debug file" {
+@test "${BATS_TEST_FILENAME} - reset the debug file" {
 	# This function is part of DETIK too
 	reset_debug
 }
 
-@test "test kubectl config and access" {
+# == Init
+#
+@test "${BATS_TEST_FILENAME} - init - test kubectl config and access" {
     run kubectl version
     [ "$status" -eq 0 ]
 }
 
-@test "create '${KNS_NAMESPACE}' namespace" {
+@test "${BATS_TEST_FILENAME} - init - create '${KNS_NAMESPACE}' namespace" {
+    run kubectl get ns ${KNS_NAMESPACE}
+    if [[ "$status" -eq 0 ]]; then
+        skip "The namespace ${KNS_NAMESPACE} already exists"
+    fi
+
     run kubectl create ns ${KNS_NAMESPACE}
     [ "$status" -eq 0 ]
 }
 
-@test "deploy kube-ns-suspender" {
+@test "${BATS_TEST_FILENAME} - init - deploy kube-ns-suspender" {
     run kubectl -n ${KNS_NAMESPACE} apply -f manifests/dev/
     [ "$status" -eq 0 ]
 }
 
-@test "check if kube-ns-suspender is up and running" {
+@test "${BATS_TEST_FILENAME} - init - check if kube-ns-suspender is up and running (wait max 6x10s)" {
     DETIK_CLIENT_NAMESPACE="${KNS_NAMESPACE}"
 
     run try "at most 6 times every 10s \
@@ -52,12 +59,16 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "deploy mock manifests" {
+@test "${BATS_TEST_FILENAME} - init - deploy mock manifests" {
     run kubectl apply -f manifests/testing-namespace/full.yaml
     [ "$status" -eq 0 ]
 }
 
-@test "check if pods 'misc-depl-*' are up and running" {
+# == Tests resources
+#
+# === Pre-suspend
+#
+@test "${BATS_TEST_FILENAME} - deployments - check if pods 'misc-depl' are up and running (wait max 6x10s)" {
     run try "at most 6 times every 10s \
             to get pods named 'misc-depl' \
             and verify that 'status' is 'running'"
@@ -65,23 +76,23 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "check the number of replicas" {
+@test "${BATS_TEST_FILENAME} - deployments - check the number of replicas (there should be 3)" {
     run verify "there are 3 pods named 'misc-depl-*'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
 
 # suspend the namespace
-@test "update the testing namespace to be suspended in the following minute" {
+@test "${BATS_TEST_FILENAME} - action - update the testing namespace to be suspended in the following minute" {
     run kubectl annotate --overwrite \
             ns kube-ns-suspender-testing-namespace \
-            kube-ns-suspender/dailySuspendTime=$(LC_TIME=en_US.UTF-8 date +%I:%M%p -d@"$((`date +%s`+60 ))")
+            kube-ns-suspender/desiredState=Suspended
     [ "$status" -eq 0 ]
 }
 
-# check the number of replicas
-# it should be 0
-@test "check if pods 'misc-depl-*' have 0 replicas up and running" {
+# === Post-suspend
+#
+@test "${BATS_TEST_FILENAME} - deployments - check if pods 'misc-depl-*' have 0 replicas up and running" {
     run try "at most 12 times every 10s \
             to find 0 pod named 'misc-depl' \
             with 'status' being 'running'" 
@@ -90,15 +101,16 @@ setup() {
 }
 
 # unsuspend the namespace
-@test "unsuspend the namespace" {
+@test "${BATS_TEST_FILENAME} - action - unsuspend the namespace" {
     run kubectl annotate --overwrite \
         ns kube-ns-suspender-testing-namespace \
         kube-ns-suspender/desiredState=Running
     [ "$status" -eq 0 ]
 }
 
-# check if the pods are up and running
-@test "check if pods are up and running again" {
+# === Post-unsuspend
+#
+@test "${BATS_TEST_FILENAME} - deployments - check if pods are up and running again" {
     run try "at most 12 times every 10s \
             to get pods named 'misc-depl' \
             and verify that 'status' is 'running'"
@@ -106,9 +118,7 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-# check the number of replicas
-# it should be 3
-@test "check if the number of replicas is back to original" {
+@test "${BATS_TEST_FILENAME} - deployments - check if the number of replicas is back to original" {
     run verify "there are 3 pods named 'misc-depl'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
@@ -118,6 +128,8 @@ teardown() {
     [ -n "$BATS_TEST_COMPLETED" ] || touch ${BATS_PARENT_TMPNAME}.skip
 }
 
+# Note: This step seems to not be run by CI jobs on GitHub Actions
+# but still usefull for local testing.
 teardown_file() {
     echo "----> teardown_file()"
 
@@ -127,3 +139,16 @@ teardown_file() {
     echo "Getting 'kube-ns-suspender' logs"
     kubectl -n ${KNS_NAMESPACE} logs ${knsPodName#pod/} > /tmp/detik/${knsPodName#pod/}.log
 }
+
+# Notes:
+#
+# - https://bats-core.readthedocs.io/en/stable/faq.html#how-can-i-check-if-a-test-failed-succeeded-during-teardown
+#   This could be used to collect logs only when tests failed rather than always.
+#
+# - https://bats-core.readthedocs.io/en/stable/faq.html#how-can-i-debug-a-failing-test
+#   Use appropriate `asserts_` for your task instead of raw bash comparisons.
+#   `asserts_` will print the output when the test fails while raw bash won’t.
+#   -> Same consequece: Display output only when it fails rather than always
+#
+# - https://bats-core.readthedocs.io/en/stable/writing-tests.html#special-variables
+# 

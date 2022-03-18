@@ -12,6 +12,7 @@ env:
 jobs:
   build-and-push-image:
     runs-on: ubuntu-latest
+    # Permissions for the Built-in, auto-loaded secrets.GITHUB_TOKEN
     permissions:
       contents: read
       packages: write
@@ -19,6 +20,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+        #TODO:
+        # - [ ] Why no `fetch-depth: 0` option like in `release_build`
 
       - name: Log in to the Container registry
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
@@ -35,7 +38,7 @@ jobs:
 
       - name: Get current date
         id: date
-        run: echo "::set-output name=date::$(date +'%Y-%m-%d_%H:%M:%ST%Z')"
+        run: echo "BUILD_DATE=$(date +'%Y-%m-%d_%H:%M:%ST%Z')" >> $GITHUB_ENV
 
       - name: Build and push Docker image
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
@@ -45,5 +48,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            version=${{ steps.meta.outputs.tags }}
-            build_date=${{ steps.date.output.date}}
+            VERSION=${{ steps.meta.outputs.tags }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
