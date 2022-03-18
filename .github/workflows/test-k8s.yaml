@@ -34,6 +34,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Get current date
+        id: date
+        run: echo "BUILD_DATE=$(date +'%Y-%m-%d_%H:%M:%ST%Z')" >> $GITHUB_ENV
+
+      - name: Extract metadata from Git and GitHub for Docker
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
@@ -43,8 +53,11 @@ jobs:
           context: .
           push: false
           load: false
-          tags: ghcr.io/govirtuo/kube-ns-suspender:latest
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           outputs: type=docker,dest=/tmp/kube-ns-suspender_oci.tar
+          build-args: |
+            VERSION=${{ steps.meta.outputs.tags }}
+            BUILD_DATE=${{ env.BUILD_DATE }}
 
       - name: Upload container image
         uses: actions/upload-artifact@v2
@@ -93,9 +106,8 @@ jobs:
       - name: Testing
         run: time bats ./tests/
 
-      # FIXME: Convert these following steps into post-actions otherwise we won't be able to access them when tests fail
       - name: Collect logs
-        if: ${{ failure() }}
+        if: ${{ always() }}
         run: |
           echo "---> DETIK logs"
           cp -va /tmp/detik tmp/
@@ -104,7 +116,7 @@ jobs:
           kind export logs tmp/kind/
 
       - name: Archive test logs
-        if: ${{ failure() }}
+        if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
           name: tests-logs
@@ -128,6 +140,32 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Download artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: kube-ns-suspender_oci
+          path: /tmp
+
+      - name: Load image into docker
+        run: |
+          docker load --input /tmp/kube-ns-suspender_oci.tar
+          docker image ls -a
+
+      - name: Extract metadata from Git and GitHub for Docker
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+      - name: Get current date
+        id: date
+        run: echo "BUILD_DATE=$(date +'%Y-%m-%d_%H:%M:%ST%Z')" >> $GITHUB_ENV
+
+      # Build time should not be increased with this workflow because internal cache for linux/amd64 will be used from previous jobs step
+      # on Build and push step.
       - name: Push
         uses: docker/build-push-action@v2
         with:
@@ -135,4 +173,6 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-      
+          build-args: |
+              VERSION=${{ steps.meta.outputs.tags }}
+              BUILD_DATE=${{ env.BUILD_DATE }}
