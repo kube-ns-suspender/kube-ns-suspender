@@ -22,7 +22,7 @@ setup() {
 	debug  ""
 }
 
-@test "${BATS_TEST_FILENAME} - reset the debug file" {
+@test "reset the debug file" {
 	# This function is part of DETIK too
 	reset_debug
 }
@@ -68,34 +68,28 @@ setup() {
 #
 # === Pre-suspend
 #
-@test "${BATS_TEST_FILENAME} - deployments - check if pods 'misc-depl' are up and running (wait max 6x10s)" {
-    run try "at most 6 times every 10s \
-            to get pods named 'misc-depl' \
-            and verify that 'status' is 'running'"
+@test "${BATS_TEST_FILENAME} - cronjobs - check if cronjobs are not suspended" {
+    run kubectl -n ${DETIK_CLIENT_NAMESPACE} get cronjobs.batch hello -o jsonpath="{.spec.suspend}"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
-}
-
-@test "${BATS_TEST_FILENAME} - deployments - check the number of replicas (there should be 3)" {
-    run verify "there are 3 pods named 'misc-depl-*'"
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
+    [ "$output" == "false" ]
 }
 
 # suspend the namespace
-@test "${BATS_TEST_FILENAME} - action - update the testing namespace to be suspended in the following minute" {
+@test "${BATS_TEST_FILENAME} - action - update the testing namespace to be suspended" {
     run kubectl annotate --overwrite \
             ns kube-ns-suspender-testing-namespace \
-            kube-ns-suspender/desiredState=Suspended
+            kube-ns-suspender/dailySuspendTime=$(LC_TIME=en_US.UTF-8 date +%I:%M%p -d@"$((`date +%s`+60 ))")
     [ "$status" -eq 0 ]
 }
 
 # === Post-suspend
 #
-@test "${BATS_TEST_FILENAME} - deployments - check if pods 'misc-depl-*' have 0 replicas up and running" {
-    run try "at most 12 times every 10s \
-            to find 0 pod named 'misc-depl' \
-            with 'status' being 'running'" 
+@test "${BATS_TEST_FILENAME} - cronjobs - check if cronjobs are suspended" {
+    run try "at most 6 times every 10s \
+            to get cronjobs named 'hello' \
+            and verify that '.spec.suspend' is 'true'"
+
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
@@ -110,16 +104,11 @@ setup() {
 
 # === Post-unsuspend
 #
-@test "${BATS_TEST_FILENAME} - deployments - check if pods are up and running again" {
-    run try "at most 12 times every 10s \
-            to get pods named 'misc-depl' \
-            and verify that 'status' is 'running'"
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
+@test "${BATS_TEST_FILENAME} - cronjobs - check if cronjobs are not suspended after resuming namespace" {
+    run try "at most 6 times every 10s \
+            to get cronjobs named 'hello' \
+            and verify that '.spec.suspend' is 'false'"
 
-@test "${BATS_TEST_FILENAME} - deployments - check if the number of replicas is back to original" {
-    run verify "there are 3 pods named 'misc-depl'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
