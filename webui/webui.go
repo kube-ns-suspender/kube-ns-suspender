@@ -2,6 +2,7 @@ package webui
 
 import (
 	"context"
+	"embed"
 	"html/template"
 	"log"
 	"net/http"
@@ -15,6 +16,10 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
 )
+
+// assets holds our static web server assets.
+//go:embed assets/*
+var assets embed.FS
 
 type NamespacesList struct {
 	IsEmpty bool
@@ -91,8 +96,8 @@ func createRouter(l zerolog.Logger, prefix string) *mux.Router {
 }
 
 func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
-	tmpl, err := template.ParseFiles("webui/assets/home.html", "webui/assets/templates/head.html",
-		"webui/assets/templates/style.html", "webui/assets/templates/footer.html")
+	tmpl, err := template.ParseFS(assets, "assets/home.html", "assets/templates/head.html",
+		"assets/templates/style.html", "assets/templates/footer.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/").Msg("cannot parse files")
 	}
@@ -121,8 +126,8 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 }
 
 func (h handler) unsuspendHandler(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
-	tmpl, err := template.ParseFiles("webui/assets/unsuspend.html", "webui/assets/templates/head.html",
-		"webui/assets/templates/style.html", "webui/assets/templates/footer.html")
+	tmpl, err := template.ParseFS(assets, "assets/unsuspend.html", "assets/templates/head.html",
+		"assets/templates/style.html", "assets/templates/footer.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/unsuspend").Msg("cannot parse files")
 	}
@@ -152,8 +157,8 @@ func (h handler) unsuspendHandler(w http.ResponseWriter, r *http.Request, l zero
 }
 
 func (h handler) bugHandler(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
-	tmpl, err := template.ParseFiles("webui/assets/bug.html", "webui/assets/templates/head.html",
-		"webui/assets/templates/style.html", "webui/assets/templates/footer.html")
+	tmpl, err := template.ParseFS(assets, "assets/bug.html", "assets/templates/head.html",
+		"assets/templates/style.html", "assets/templates/footer.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/bug").Msg("cannot parse files")
 	}
@@ -165,8 +170,8 @@ func (h handler) bugHandler(w http.ResponseWriter, r *http.Request, l zerolog.Lo
 }
 
 func errorPage(w http.ResponseWriter, r *http.Request) {
-	tmpl, err := template.ParseFiles("webui/assets/404.html", "webui/assets/templates/head.html",
-		"webui/assets/templates/style.html", "webui/assets/templates/footer.html")
+	tmpl, err := template.ParseFS(assets, "assets/404.html", "assets/templates/head.html",
+		"assets/templates/style.html", "assets/templates/footer.html")
 	if err != nil {
 		log.Fatalf("Can not parse home page : %v", err)
 	}
@@ -179,8 +184,8 @@ func errorPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h handler) listHandler(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
-	tmpl, err := template.ParseFiles("webui/assets/list.html", "webui/assets/templates/head.html",
-		"webui/assets/templates/style.html", "webui/assets/templates/footer.html")
+	tmpl, err := template.ParseFS(assets, "assets/list.html", "assets/templates/head.html",
+		"assets/templates/style.html", "assets/templates/footer.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/list").Msg("cannot parse files")
 	}
