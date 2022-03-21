@@ -81,7 +81,7 @@ func createRouter(l zerolog.Logger, prefix string) *mux.Router {
 		prefix: prefix,
 	}
 	withLogger := loggingHandlerFactory(l)
-	r.Handle("/", withLogger(h.homePage)).Methods(http.MethodGet)
+	r.Handle("/home", withLogger(h.homePage)).Methods(http.MethodGet)
 	r.Handle("/unsuspend", withLogger(h.unsuspendHandler)).Methods(http.MethodPost)
 	r.Handle("/bug", withLogger(h.bugHandler)).Methods(http.MethodGet)
 	r.Handle("/list", withLogger(h.listHandler)).Methods(http.MethodGet)
@@ -94,12 +94,12 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 	tmpl, err := template.ParseFiles("webui/assets/home.html", "webui/assets/templates/head.html",
 		"webui/assets/templates/style.html", "webui/assets/templates/footer.html")
 	if err != nil {
-		l.Error().Err(err).Str("page", "/").Msg("cannot parse files")
+		l.Error().Err(err).Str("page", "/home").Msg("cannot parse files")
 	}
 
 	namespaces, err := cs.CoreV1().Namespaces().List(context.TODO(), v1.ListOptions{})
 	if err != nil {
-		l.Error().Err(err).Str("page", "/").Msg("cannot list namespaces")
+		l.Error().Err(err).Str("page", "/home").Msg("cannot list namespaces")
 	}
 
 	var nsList NamespacesList
@@ -116,7 +116,7 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 	}
 	err = tmpl.Execute(w, nsList)
 	if err != nil {
-		l.Error().Err(err).Str("page", "/").Msg("cannot execute template")
+		l.Error().Err(err).Str("page", "/home").Msg("cannot execute template")
 	}
 }
 
@@ -187,7 +187,7 @@ func (h handler) listHandler(w http.ResponseWriter, r *http.Request, l zerolog.L
 
 	namespaces, err := cs.CoreV1().Namespaces().List(context.TODO(), v1.ListOptions{})
 	if err != nil {
-		l.Error().Err(err).Str("page", "/").Msg("cannot list namespaces")
+		l.Error().Err(err).Str("page", "/home").Msg("cannot list namespaces")
 	}
 
 	var nsList ListNamespacesAndStates
