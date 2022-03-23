@@ -21,6 +21,8 @@ const (
 const (
 	// annotations used on namespaces
 	nextSuspendTime = "nextSuspendTime"
+	controllerName  = "controllerName"
+
 	// those ones need to be exported as they are used
 	// in the webui package
 	DailySuspendTime = "dailySuspendTime"
