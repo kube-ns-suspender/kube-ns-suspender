@@ -33,7 +33,6 @@ func main() {
 	fs.StringVar(&opt.Prefix, "prefix", "kube-ns-suspender/", "Prefix to use for annotations")
 	fs.StringVar(&opt.RunningDuration, "running-duration", "4h", "Running duration")
 	fs.IntVar(&opt.WatcherIdle, "watcher-idle", 15, "Watcher idle duration (in seconds)")
-	fs.BoolVar(&opt.DryRun, "dry-run", false, "Run in dry run mode")
 	fs.BoolVar(&opt.NoKubeWarnings, "no-kube-warnings", false, "Disable Kubernetes warnings")
 	fs.BoolVar(&opt.HumanLogs, "human", false, "Disable JSON logging")
 	fs.BoolVar(&opt.EmbeddedUI, "ui-embedded", false, "Start UI in background")
