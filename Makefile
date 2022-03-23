@@ -3,7 +3,7 @@ GOTEST=$(GOCMD) test
 GOVET=$(GOCMD) vet
 BINARY_NAME=kube-ns-suspender
 VERSION=$(shell git describe --tags)
-DOCKER_REGISTRY?=
+DOCKER_REGISTRY?=ghcr.io/govirtuo
 
 # Tooling and testing
 KIND_VERSION:=v0.11.1
@@ -42,7 +42,7 @@ ifeq ($(EXPORT_RESULT), true)
 	gocov convert profile.cov | gocov-xml > coverage.xml
 endif
 
-e2e: docker-build-tools e2e_cleanup ## Run End2End tests on a kubernetes cluster
+e2e: docker-build docker-build-tools e2e_cleanup ## Run End2End tests on a kubernetes cluster
 	$(eval TMP_DIR := $(shell mktemp -d))
 	$(eval KUBE_CONFIG := "${TMP_DIR}/kube.config")
 
@@ -78,7 +78,10 @@ e2e_cleanup: ## Cleanup End2End resources
 
 ## Docker:
 docker-build: ## Use the Dockerfile to build the container
+	@echo '${GREEN}---> Build docker container${RESET}'
 	docker build --rm --tag $(BINARY_NAME) --build-arg VERSION=${VERSION} --build-arg BUILD_DATE=$(shell date +%s) .
+
+	@echo '${GREEN}---> Tag as 'latest'${RESET}'
 	docker tag $(BINARY_NAME) $(DOCKER_REGISTRY)/$(BINARY_NAME):latest
 
 docker-release: ## Release the container with tag latest and version
