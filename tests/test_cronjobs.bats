@@ -75,11 +75,20 @@ setup() {
     [ "$output" == "false" ]
 }
 
+# === Suspend
+#
+@test "${BATS_TEST_FILENAME} - onboard the testing namespace with 'controllerName' annotation" {
+    run kubectl annotate --overwrite \
+            ns kube-ns-suspender-testing-namespace \
+            kube-ns-suspender/controllerName=kube-ns-suspender
+    [ "$status" -eq 0 ]
+}
+
 # suspend the namespace
 @test "${BATS_TEST_FILENAME} - action - update the testing namespace to be suspended" {
     run kubectl annotate --overwrite \
             ns kube-ns-suspender-testing-namespace \
-            kube-ns-suspender/dailySuspendTime=$(LC_TIME=en_US.UTF-8 date +%I:%M%p -d@"$((`date +%s`+60 ))")
+            kube-ns-suspender/desiredState=Suspended
     [ "$status" -eq 0 ]
 }
 
