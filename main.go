@@ -31,6 +31,7 @@ func main() {
 	fs.StringVar(&opt.LogLevel, "log-level", "debug", "Log level")
 	fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
 	fs.StringVar(&opt.Prefix, "prefix", "kube-ns-suspender/", "Prefix to use for annotations")
+	fs.StringVar(&opt.ControllerName, "controller-name", "kube-ns-suspender", "Unique name of the contoller")
 	fs.StringVar(&opt.RunningDuration, "running-duration", "4h", "Running duration")
 	fs.IntVar(&opt.WatcherIdle, "watcher-idle", 15, "Watcher idle duration (in seconds)")
 	fs.BoolVar(&opt.NoKubeWarnings, "no-kube-warnings", false, "Disable Kubernetes warnings")
@@ -78,6 +79,8 @@ func main() {
 	eng.Logger.Debug().Msgf("running duration: %s", eng.RunningDuration)
 	eng.Logger.Debug().Msgf("log level: %s", eng.Options.LogLevel)
 	eng.Logger.Debug().Msgf("json logging: %v", !eng.Options.HumanLogs)
+	eng.Logger.Debug().Msgf("controller name: %v", eng.Options.ControllerName)
+	eng.Logger.Debug().Msgf("annotations prefix: %v", eng.Options.Prefix)
 
 	// create metrics server
 	start = time.Now()

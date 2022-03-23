@@ -45,7 +45,7 @@ type Options struct {
 	RunningDuration           string
 	LogLevel                  string
 	TZ                        string
-	Prefix                    string
+	Prefix, ControllerName    string
 	NoKubeWarnings, HumanLogs bool
 	EmbeddedUI, WebUIOnly     bool
 }
