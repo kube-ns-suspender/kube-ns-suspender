@@ -35,7 +35,7 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		var wllen, runningNs, suspendedNs, unknownNs int
 		// look for new namespaces to watch
 		for _, n := range ns.Items {
-			if value, ok := n.Annotations[eng.Options.Prefix+"controllerName"]; ok {
+			if value, ok := n.Annotations[eng.Options.Prefix+controllerName]; ok {
 				if value == eng.Options.ControllerName {
 					eng.Wl <- n
 					wlLogger.Trace().Msgf("namespace %s sent to suspender", n.Name)
