@@ -13,48 +13,37 @@ import (
 
 // checkRunningDeploymentsConformity verifies that all deployments within the namespace are
 // currently running
-func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string, dr bool) error {
+func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns, prefix string) (bool, error) {
+	hasBeenPatched := false
 	for _, d := range deployments {
-		// debug: on
-		if d.Name == "kube-ns-suspender-depl" {
-			continue
-		}
-		// debug: off
 		repl := int(*d.Spec.Replicas)
 		if repl == 0 {
 			// get the desired number of replicas
-			repl, err := strconv.Atoi(d.Annotations["kube-ns-suspender/originalReplicas"])
+			repl, err := strconv.Atoi(d.Annotations[prefix+originalReplicas])
 			if err != nil {
-				return err
+				return hasBeenPatched, err
 			}
 
-			l.Info().
-				Str("deployment", d.Name).
-				Msgf("scaling %s from 0 to %d replicas", d.Name, repl)
+			l.Info().Str("deployment", d.Name).Msgf("scaling %s from 0 to %d replicas", d.Name, repl)
 			// patch the deployment
-			if !dr {
-				if err := patchDeploymentReplicas(ctx, cs, ns, d.Name, repl); err != nil {
-					return err
-				}
+			if err := patchDeploymentReplicas(ctx, cs, ns, d.Name, prefix, repl); err != nil {
+				return hasBeenPatched, err
 			}
+			hasBeenPatched = true
 		}
 	}
-	return nil
+	return hasBeenPatched, nil
 }
 
-func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns string, dr bool) error {
+func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns, prefix string) error {
 	for _, d := range deployments {
 		repl := int(*d.Spec.Replicas)
 		if repl != 0 {
 			// TODO: what about fixing the annotation original Replicas here ?
-			l.Info().
-				Str("deployment", d.Name).
-				Msgf("scaling %s from %d to 0 replicas", d.Name, repl)
-			// patch the deployment if -dryrun is not set
-			if !dr {
-				if err := patchDeploymentReplicas(ctx, cs, ns, d.Name, 0); err != nil {
-					return err
-				}
+			l.Info().Str("deployment", d.Name).Msgf("scaling %s from %d to 0 replicas", d.Name, repl)
+			// patch the deployment
+			if err := patchDeploymentReplicas(ctx, cs, ns, d.Name, prefix, 0); err != nil {
+				return err
 			}
 		}
 	}
@@ -62,7 +51,7 @@ func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, 
 }
 
 // patchDeploymentReplicas updates the number of replicas of a given deployment
-func patchDeploymentReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, d string, repl int) error {
+func patchDeploymentReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, d, prefix string, repl int) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, err := cs.AppsV1().Deployments(ns).Get(ctx, d, metav1.GetOptions{})
 		if err != nil {
@@ -71,7 +60,7 @@ func patchDeploymentReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, 
 		// if we want 0 replicas, it means that we are suspending the namespace,
 		// so before adjusting the replicas count, we want to save it for later
 		if repl == 0 {
-			result.Annotations["kube-ns-suspender/originalReplicas"] = strconv.Itoa(int(*result.Spec.Replicas))
+			result.Annotations[prefix+originalReplicas] = strconv.Itoa(int(*result.Spec.Replicas))
 		}
 		result.Spec.Replicas = flip(int32(repl))
 		_, err = cs.AppsV1().Deployments(ns).Update(ctx, result, metav1.UpdateOptions{})

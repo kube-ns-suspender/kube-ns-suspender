@@ -9,7 +9,7 @@ import (
 )
 
 // Watcher periodically watches the namespaces, and add them to the engine
-// watchlist if they have the 'kube-ns-suspender/desiredState' set.
+// watchlist if they have the 'kube-ns-suspender/DesiredState' set.
 func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 	eng.Mutex.Lock()
 	wlLogger := eng.Logger.With().
@@ -35,12 +35,12 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		var wllen, runningNs, suspendedNs, unknownNs int
 		// look for new namespaces to watch
 		for _, n := range ns.Items {
-			if _, ok := n.Annotations[eng.Options.Prefix+"dailySuspendTime"]; ok {
+			if _, ok := n.Annotations[eng.Options.Prefix+DailySuspendTime]; ok {
 				eng.Wl <- n
 				wlLogger.Trace().Msgf("namespace %s sent to suspender", n.Name)
 				wllen++
-				// try to get the desiredState annotation
-				if state, ok := n.Annotations[eng.Options.Prefix+"desiredState"]; ok {
+				// try to get the DesiredState annotation
+				if state, ok := n.Annotations[eng.Options.Prefix+DesiredState]; ok {
 					// increment variables for metrics
 					switch state {
 					case Running:
