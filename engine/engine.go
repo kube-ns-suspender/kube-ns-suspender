@@ -41,13 +41,13 @@ type Engine struct {
 }
 
 type Options struct {
-	WatcherIdle                       int
-	RunningDuration                   string
-	LogLevel                          string
-	TZ                                string
-	Prefix                            string
-	DryRun, NoKubeWarnings, HumanLogs bool
-	EmbeddedUI, WebUIOnly             bool
+	WatcherIdle               int
+	RunningDuration           string
+	LogLevel                  string
+	TZ                        string
+	Prefix                    string
+	NoKubeWarnings, HumanLogs bool
+	EmbeddedUI, WebUIOnly     bool
 }
 
 // New returns a new engine instance
