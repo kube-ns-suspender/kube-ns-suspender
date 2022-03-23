@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -29,153 +28,64 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		// loop
 		eng.Mutex.Lock()
 		sLogger := eng.Logger.With().Str("routine", "suspender").Str("namespace", n.Name).Logger()
-		eng.Mutex.Unlock()
-
 		sLogger.Trace().Msgf("namespace %s received from watcher", n.Name)
-		eng.Mutex.Lock()
 
-		desiredState, ok := n.Annotations[eng.Options.Prefix+"desiredState"]
-		if !ok {
-			// the annotation does not exist, which means that it is the first
-			// time we see this namespace. So by default, it should be "running"
-			now, suspendAt, err := getTimes(n.Annotations[eng.Options.Prefix+"dailySuspendTime"])
-			if err != nil {
-				sLogger.Error().
-					Err(err).
-					Msgf("cannot parse dailySuspendTime time on namespace %s", n.Name)
-			}
-			sLogger.Trace().Msgf("now: %d, dailySuspendTime: %d, remaining: %s", now, suspendAt,
-				time.Duration(suspendAt)*time.Minute-time.Duration(now)*time.Minute)
-			if suspendAt <= now {
-				// patch the namespace
-				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					res, err := cs.CoreV1().
-						Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
-					if err != nil {
-						return err
-					}
-					res.Annotations[eng.Options.Prefix+"desiredState"] = Suspended
-					var updateOpts metav1.UpdateOptions
-					// if the flag -dryrun is used, do not update resources
-					if eng.Options.DryRun {
-						updateOpts = metav1.UpdateOptions{
-							DryRun: append(updateOpts.DryRun, "All"),
-						}
-					}
-					_, err = cs.CoreV1().
-						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+		// get the namespace state
+		dState := n.Annotations[eng.Options.Prefix+DesiredState]
+
+		/*
+			This first switch-case statement will ensure that the namespace has a state set.
+			- if dState is empty, it means that it is the first time we see this namespace, so we
+			add the annotation with the state Running
+			- if dState is equal to Running or Suspended, the switch-case will do nothing.
+			- if dState ends in the default case, it means that the state has not been recognised, so
+			we have to error
+		*/
+
+		switch dState {
+		case "":
+			sLogger.Debug().Msgf("namespace %s has no %s annotation, it is probably the first time I see it", n.Name, DesiredState)
+			if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+				res, err := cs.CoreV1().
+					Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+				if err != nil {
 					return err
-				}); err != nil {
-					sLogger.Error().
-						Err(err).
-						Msgf("cannot update namespace %s object", n.Name)
-				} else {
-					sLogger.Info().
-						Msgf("suspended namespace %s based on daily suspend time", n.Name)
 				}
-				desiredState = Suspended
-			} else {
-				eng.Mutex.Unlock()
+				// we set the annotation to running
+				res.Annotations[eng.Options.Prefix+DesiredState] = Running
+
+				_, err = cs.CoreV1().
+					Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+				return err
+			}); err != nil {
+				sLogger.Error().Err(err).Msgf("cannot update namespace %s object", n.Name)
+				// we give up and handle the next namespace
 				sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
 				continue
 			}
-		}
+			sLogger.Debug().Msgf("added annotation %s=%s to namespace %s", DesiredState, Running, n.Name)
 
-		switch desiredState {
-		case Running:
-			if date, ok := eng.RunningNamespacesList[n.Name]; !ok {
-				// first time we see this namespace as running, so we simply add
-				// it to the map with the current time
-				eng.RunningNamespacesList[n.Name] = time.Now().Local()
-
-				// then we add the annotation that indicates when the namespace
-				// will be automtically suspended again
-				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					res, err := cs.CoreV1().
-						Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
-					if err != nil {
-						return err
-					}
-					res.Annotations[eng.Options.Prefix+"auto_nextSuspendTime"] = time.Now().
-						Add(eng.RunningDuration).Format(time.Kitchen)
-					var updateOpts metav1.UpdateOptions
-					// if the flag -dryrun is used, do not update resources
-					if eng.Options.DryRun {
-						updateOpts = metav1.UpdateOptions{
-							DryRun: append(updateOpts.DryRun, "All"),
-						}
-					}
-					_, err = cs.CoreV1().
-						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
-					return err
-				}); err != nil {
-					sLogger.Error().
-						Err(err).
-						Msgf("cannot add nextSuspendTime annotation to namespace %s", n.Name)
-				} else {
-					sLogger.Debug().
-						Msgf("added nextSuspendTime annotation to %s on %s ", time.Now().
-							Add(eng.RunningDuration).Format(time.Kitchen), n.Name)
-				}
-			} else {
-				if time.Now().Local().Sub(date) < eng.RunningDuration {
-					// we do not have to suspend the namespace yet, so we
-					// continue
-					eng.Mutex.Unlock()
-					sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
-					continue
-				}
-				// if we end up here, it means that we have to suspend the
-				// namespace as it as been running for too long
-				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					res, err := cs.CoreV1().
-						Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
-					if err != nil {
-						return err
-					}
-					res.Annotations[eng.Options.Prefix+"desiredState"] = Suspended
-					delete(res.Annotations, eng.Options.Prefix+"auto_nextSuspendTime")
-
-					var updateOpts metav1.UpdateOptions
-					// if the flag -dryrun is used, do not update resources
-					if eng.Options.DryRun {
-						updateOpts = metav1.UpdateOptions{
-							DryRun: append(updateOpts.DryRun, "All"),
-						}
-					}
-					_, err = cs.CoreV1().
-						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
-					return err
-				}); err != nil {
-					sLogger.Error().
-						Err(err).
-						Msgf("cannot update namespace %s object", n.Name)
-				} else {
-					sLogger.Info().
-						Msgf("suspended namespace %s based on uptime", n.Name)
-					desiredState = Suspended
-					delete(eng.RunningNamespacesList, n.Name)
-				}
-			}
-		case Suspended:
-			// TODO: think about removing ²the annotation auto_nextSuspendTime
-			// here. Elsewhere, it will stay until the next running call.
+			// we now update the value of dState to match the new namespace annotation
+			dState = Running
+		case Running, Suspended:
+			// do nothing
 		default:
-			sLogger.Error().
-				Err(errors.New("state not recognised: "+desiredState)).
-				Msgf("state %s is not recognised", desiredState)
-			eng.Mutex.Unlock()
+			sLogger.Error().Err(errors.New("state not recognised: "+dState)).Msgf("state %s is not recognised", dState)
+			// we give up and handle the next namespace
 			sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
 			continue
 		}
 
-		// we do a switch again, but with the updated value
+		/*
+			In order to be able to edit the resources, we first need to get all of them from
+			the namespace. This is the goal of the following expressions
+		*/
+
 		// get deployments of the namespace
 		deployments, err := cs.AppsV1().Deployments(n.Name).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			sLogger.Fatal().
 				Err(err).
-				Str("object", "deployment").
 				Msg("cannot list deployments")
 		}
 
@@ -184,7 +94,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		if err != nil {
 			sLogger.Fatal().
 				Err(err).
-				Str("object", "cronjob").
 				Msg("cannot list cronjobs")
 		}
 
@@ -193,50 +102,52 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		if err != nil {
 			sLogger.Fatal().
 				Err(err).
-				Str("object", "statefulset").
 				Msg("cannot list statefulsets")
 		}
-		var wg sync.WaitGroup
-		switch desiredState {
-		case Running:
-			wg.Add(3)
-			// check and patch deployments
-			go func() {
-				if err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.DryRun); err != nil {
-					sLogger.Error().
-						Err(err).
-						Str("object", "deployment").
-						Msg("running deployments conformity checks failed")
-				}
-				wg.Done()
-			}()
 
-			// check and patch cronjobs
-			go func() {
-				if err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name, eng.Options.DryRun); err != nil {
-					sLogger.Error().
-						Err(err).
-						Str("object", "cronjob").
-						Msg("running cronjobs conformity checks failed")
-				}
-				wg.Done()
-			}()
+		/*
+			If we end up here, it means that:
+			- the namespace has a desiredState annotation
+			- the annotation is valid
 
-			// check and patch statefulsets
-			go func() {
-				if err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.DryRun); err != nil {
-					sLogger.Error().
-						Err(err).
-						Str("object", "statefulset").
-						Msg("running steatfulsets conformity checks failed")
-				}
-				wg.Done()
-			}()
+			Now, we have to do another switch-case statement to manage the behavior of
+			the underlying replicas.
+			This switch-case will match dState again, with different behaviors:
+			- if dState == Suspended:
+				* be sure that the undelying resources are suspended. If not, downscale them
+
+			- if dState == Running:
+				* check if the namespace should be suspended, based on the dailySuspendTime annotation. If it should:
+					1. update dState to Suspended
+					2. update the namespace annotation to Suspended
+					3. go to the beginning of the switch-case: this will re-evaluate everything, and downscale as it
+					   will end in the dState == Suspended case.
+
+				* check if the namespace should be suspended, based on the nextSuspendTime annotation. If it should:
+					1. we do the same as for dailySuspendTime annotation
+
+				* check if the namespace is correctly Running, as the annotation might have been set manually. If not,
+				  upscale everything
+
+			Also, if the namespace is running, we need to ensure that the annotation DailySuspendTime is set.
+			If not, the namespace will never be suspended at a given time.
+
+			To do so, we have two integers:
+			- now, which contains today's time
+			- suspendAt, which contains today's suspend time for the namespace
+		*/
+
+		var now, suspendAt int
+	LOOP:
+		sLogger.Debug().Msgf("namespace %s is seen as being %s", n.Name, dState)
+		switch dState {
 		case Suspended:
+			// the checks will be done concurrently to optimise verification duration
+			var wg sync.WaitGroup
 			wg.Add(3)
 			// check and patch deployments
 			go func() {
-				if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.DryRun); err != nil {
+				if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.Prefix); err != nil {
 					sLogger.Error().
 						Err(err).
 						Str("object", "deployment").
@@ -247,7 +158,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 			// check and patch cronjobs
 			go func() {
-				if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name, eng.Options.DryRun); err != nil {
+				if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
 					sLogger.Error().
 						Err(err).
 						Str("object", "cronjob").
@@ -258,7 +169,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 			// check and patch statefulsets
 			go func() {
-				if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.DryRun); err != nil {
+				if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.Prefix); err != nil {
 					sLogger.Error().
 						Err(err).
 						Str("object", "statefulset").
@@ -266,15 +177,169 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				}
 				wg.Done()
 			}()
-		default:
-			errMsg := fmt.Sprintf("state %s is not a supported state", desiredState)
-			sLogger.Error().
-				Err(errors.New(errMsg)).
-				Msg("desired state cannot be recognised")
+			// we wait for all the checks to be done
+			wg.Wait()
+		case Running:
+			// we ensure that the annotation DailySuspendTime is set
+			now, suspendAt, err = getTimes(n.Annotations[eng.Options.Prefix+DailySuspendTime])
+			if err != nil {
+				sLogger.Error().Err(err).Msgf("cannot parse DailySuspendTime time on namespace %s", n.Name)
+				sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+				continue
+			}
+
+			/*
+				check if DailySuspendTime is past
+			*/
+			if suspendAt <= now {
+				sLogger.Debug().Msgf("%s is less or equal to now (value: %d, now: %d), updating annotation to %s", DailySuspendTime, suspendAt, now, Suspended)
+				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+					res, err := cs.CoreV1().
+						Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+					// we set the annotation to suspended
+					res.Annotations[eng.Options.Prefix+DesiredState] = Suspended
+
+					_, err = cs.CoreV1().
+						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+					return err
+				}); err != nil {
+					sLogger.Error().Err(err).Msgf("cannot update namespace %s object", n.Name)
+					// we give up and handle the next namespace
+					sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+					continue
+				} else {
+					sLogger.Debug().Msgf("added annotation %s=%s to namespace, going back to the start of the switch-case", DesiredState, Suspended)
+
+					// we now update the value of dState to match the new namespace annotation
+					dState = Suspended
+
+					// re-evaluate the switch-case, to end in the dState == Suspended case
+					// and downscale everything
+					goto LOOP
+				}
+			}
+			/*
+				check if nextSuspendTime exists and is past
+			*/
+			if val, ok := n.Annotations[eng.Options.Prefix+nextSuspendTime]; ok {
+				now, suspendAt, err = getTimes(val)
+				if err != nil {
+					sLogger.Error().Err(err).Msgf("cannot parse nextSuspendTime time on namespace %s", n.Name)
+					sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+					continue
+				}
+
+				// ! BUG: if time.Now() + eng.RunningDuration is the next day, this will not work
+				// example for autoNextSuspend @ 01:00AM: nextSuspendTime is less or equal to now (value: 60, now: 1260), updating annotation
+				// to Suspended
+				if suspendAt <= now {
+					sLogger.Debug().Msgf("%s is less or equal to now (value: %d, now: %d), updating annotation to %s", nextSuspendTime, suspendAt, now, Suspended)
+					if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+						res, err := cs.CoreV1().
+							Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+						// we set the annotation to suspended
+						res.Annotations[eng.Options.Prefix+DesiredState] = Suspended
+
+						_, err = cs.CoreV1().
+							Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+						return err
+					}); err != nil {
+						sLogger.Error().Err(err).Msgf("cannot update namespace %s object", n.Name)
+						// we give up and handle the next namespace
+						sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+						continue
+					} else {
+						sLogger.Debug().Msgf("added annotation %s=%s to namespace %s, going back to the start of the switch-case", n.Name, DesiredState, Suspended)
+
+						// we now update the value of dState to match the new namespace annotation
+						dState = Suspended
+
+						// re-evaluate the switch-case, to end in the dState == Suspended case
+						// and downscale everything
+						goto LOOP
+					}
+				}
+			}
+
+			/*
+				If we end up here, it means that the namespace should be running. All we have to do now is to
+				run the conformity checks on the namespace resources.
+
+				The checks will be done concurrently to optimise verification duration.
+				We also grab the hasBeenPatched bool for each check. If this value is set to true anywhere, it means
+				that the namespace has been unsuspended manually (state == running but everything is scaled to 0).
+				To detect this, each resource will increment a counter called patchedResourcesCounter by one.
+				If at the end the counter is > than 0, we add the annotation to the namespace.
+			*/
+			var wg sync.WaitGroup
+			var patchedResourcesCounter int
+			wg.Add(3)
+			// check and patch deployments
+			go func() {
+				hasBeenPatched, err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.Prefix)
+				if err != nil {
+					sLogger.Error().Err(err).Msg("running deployments conformity checks failed")
+				}
+				if hasBeenPatched {
+					patchedResourcesCounter++
+				}
+				wg.Done()
+			}()
+
+			// check and patch cronjobs
+			go func() {
+				hasBeenPatched, err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name)
+				if err != nil {
+					sLogger.Error().Err(err).Msg("running cronjobs conformity checks failed")
+				}
+				if hasBeenPatched {
+					patchedResourcesCounter++
+				}
+				wg.Done()
+			}()
+
+			// check and patch statefulsets
+			go func() {
+				hasBeenPatched, err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.Prefix)
+				if err != nil {
+					sLogger.Error().Err(err).Msg("running steatfulsets conformity checks failed")
+				}
+				if hasBeenPatched {
+					patchedResourcesCounter++
+				}
+				wg.Done()
+			}()
+			// we wait for all the checks to be done
+			wg.Wait()
+
+			// now we can check if patchedResourcesCounter is > 0 and add nextSuspendTime depending of the result
+			if patchedResourcesCounter > 0 {
+				sLogger.Debug().Msgf("it seems that namespace %s has been unsuspended manually, so I am adding the annotation %s to it", n.Name, nextSuspendTime)
+				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+					res, err := cs.CoreV1().
+						Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+					res.Annotations[eng.Options.Prefix+nextSuspendTime] = time.Now().
+						Add(eng.RunningDuration).Format(time.Kitchen)
+
+					_, err = cs.CoreV1().
+						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+					return err
+				}); err != nil {
+					sLogger.Error().Err(err).Msgf("cannot add %s annotation to namespace %s", nextSuspendTime, n.Name)
+				}
+			}
 		}
-		wg.Wait()
-		// modify resources now based on n state
-		eng.Mutex.Unlock()
+
 		sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+		eng.Mutex.Unlock()
 	}
 }

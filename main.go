@@ -36,7 +36,7 @@ func main() {
 	fs.BoolVar(&opt.DryRun, "dry-run", false, "Run in dry run mode")
 	fs.BoolVar(&opt.NoKubeWarnings, "no-kube-warnings", false, "Disable Kubernetes warnings")
 	fs.BoolVar(&opt.HumanLogs, "human", false, "Disable JSON logging")
-	fs.BoolVar(&opt.EmbededUI, "ui-embedded", false, "Start UI in background")
+	fs.BoolVar(&opt.EmbeddedUI, "ui-embedded", false, "Start UI in background")
 	fs.BoolVar(&opt.WebUIOnly, "ui-only", false, "Start UI only")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
@@ -58,7 +58,7 @@ func main() {
 	eng.Logger.Info().Msgf("kube-ns-suspender version %s (built %s)", Version, BuildDate)
 
 	// start web ui
-	if eng.Options.EmbededUI || eng.Options.WebUIOnly {
+	if eng.Options.EmbeddedUI || eng.Options.WebUIOnly {
 		go func() {
 			uiLogger := eng.Logger.With().
 				Str("routine", "webui").Logger()

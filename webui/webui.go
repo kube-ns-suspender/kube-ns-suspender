@@ -109,7 +109,7 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 
 	var nsList NamespacesList
 	for _, n := range namespaces.Items {
-		if n.Annotations[h.prefix+"desiredState"] == engine.Suspended {
+		if n.Annotations[h.prefix+engine.DesiredState] == engine.Suspended {
 			nsList.Names = append(nsList.Names, n.Name)
 		}
 	}
@@ -197,8 +197,8 @@ func (h handler) listHandler(w http.ResponseWriter, r *http.Request, l zerolog.L
 
 	var nsList ListNamespacesAndStates
 	for _, n := range namespaces.Items {
-		if _, ok := n.Annotations[h.prefix+"dailySuspendTime"]; ok {
-			val := n.Annotations[h.prefix+"desiredState"]
+		if _, ok := n.Annotations[h.prefix+engine.DailySuspendTime]; ok {
+			val := n.Annotations[h.prefix+engine.DesiredState]
 			ns := Namespace{Name: n.Name}
 			switch val {
 			case engine.Suspended:
@@ -223,7 +223,7 @@ func patchNamespace(name, prefix string) (bool, error) {
 		if err != nil {
 			return err
 		}
-		result.Annotations[prefix+"desiredState"] = engine.Running
+		result.Annotations[prefix+engine.DesiredState] = engine.Running
 		var updateOpts metav1.UpdateOptions
 		_, err = cs.CoreV1().Namespaces().Update(context.TODO(), result, updateOpts)
 		return err

@@ -10,26 +10,24 @@ import (
 	"k8s.io/client-go/util/retry"
 )
 
-func checkRunningCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string, dr bool) error {
+func checkRunningCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string) (bool, error) {
+	hasBeenPatched := false
 	for _, c := range cronjobs {
 		if *c.Spec.Suspend {
-			l.Info().
-				Str("cronjob", c.Name).
-				Msgf("updating %s from suspend: true to suspend: false", c.Name)
+			l.Info().Str("cronjob", c.Name).Msgf("updating %s from suspend: true to suspend: false", c.Name)
 			if err := patchCronjobSuspend(ctx, cs, ns, c.Name, false); err != nil {
-				return err
+				return hasBeenPatched, err
 			}
+			hasBeenPatched = true
 		}
 	}
-	return nil
+	return hasBeenPatched, nil
 }
 
-func checkSuspendedCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string, dr bool) error {
+func checkSuspendedCronjobsConformity(ctx context.Context, l zerolog.Logger, cronjobs []v1beta1.CronJob, cs *kubernetes.Clientset, ns string) error {
 	for _, c := range cronjobs {
 		if !*c.Spec.Suspend {
-			l.Info().
-				Str("cronjob", c.Name).
-				Msgf("updating %s from suspend: false to suspend: true", c.Name)
+			l.Info().Str("cronjob", c.Name).Msgf("updating %s from suspend: false to suspend: true", c.Name)
 			if err := patchCronjobSuspend(ctx, cs, ns, c.Name, true); err != nil {
 				return err
 			}
