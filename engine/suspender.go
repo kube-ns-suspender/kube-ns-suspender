@@ -225,17 +225,13 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				check if nextSuspendTime exists and is past
 			*/
 			if val, ok := n.Annotations[eng.Options.Prefix+nextSuspendTime]; ok {
-				now, suspendAt, err = getTimes(val)
+				nextSuspendAt, err := time.Parse(time.RFC822Z, val)
 				if err != nil {
-					sLogger.Error().Err(err).Msgf("cannot parse nextSuspendTime time on namespace %s", n.Name)
-					sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+					sLogger.Error().Err(err).Msgf("cannot parse %s value %s in time format %s for namespace %s", nextSuspendTime, val, time.RFC822Z, n.Name)
 					continue
 				}
 
-				// ! BUG: if time.Now() + eng.RunningDuration is the next day, this will not work
-				// example for autoNextSuspend @ 01:00AM: nextSuspendTime is less or equal to now (value: 60, now: 1260), updating annotation
-				// to Suspended
-				if suspendAt <= now {
+				if time.Now().Local().Sub(nextSuspendAt) <= eng.RunningDuration {
 					sLogger.Debug().Msgf("%s is less or equal to now (value: %d, now: %d), updating annotation to %s", nextSuspendTime, suspendAt, now, Suspended)
 					if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 						res, err := cs.CoreV1().
@@ -327,8 +323,17 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					if err != nil {
 						return err
 					}
-					res.Annotations[eng.Options.Prefix+nextSuspendTime] = time.Now().
-						Add(eng.RunningDuration).Format(time.Kitchen)
+
+					/*
+						The time format used for this annotation is RFC822Z:
+							02 Jan 06 15:04 -0700
+
+						No need to use a kitchen format as this date should not be manually edited.
+						However, it makes it easier to detect if the date is passed, as it returns
+						a complete date, not only the hours and minutes of the day.
+					*/
+					res.Annotations[eng.Options.Prefix+nextSuspendTime] = time.Now().Local().
+						Add(eng.RunningDuration).Format(time.RFC822Z)
 
 					_, err = cs.CoreV1().
 						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
