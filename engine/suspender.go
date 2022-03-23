@@ -46,16 +46,14 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		case "":
 			sLogger.Debug().Msgf("namespace %s has no %s annotation, it is probably the first time I see it", n.Name, DesiredState)
 			if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-				res, err := cs.CoreV1().
-					Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+				res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
 				if err != nil {
 					return err
 				}
 				// we set the annotation to running
 				res.Annotations[eng.Options.Prefix+DesiredState] = Running
 
-				_, err = cs.CoreV1().
-					Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+				_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
 				return err
 			}); err != nil {
 				sLogger.Error().Err(err).Msgf("cannot update namespace %s object", n.Name)
@@ -84,25 +82,19 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		// get deployments of the namespace
 		deployments, err := cs.AppsV1().Deployments(n.Name).List(ctx, metav1.ListOptions{})
 		if err != nil {
-			sLogger.Fatal().
-				Err(err).
-				Msg("cannot list deployments")
+			sLogger.Fatal().Err(err).Msg("cannot list deployments")
 		}
 
 		// get cronjobs of the namespace
 		cronjobs, err := cs.BatchV1beta1().CronJobs(n.Name).List(ctx, metav1.ListOptions{})
 		if err != nil {
-			sLogger.Fatal().
-				Err(err).
-				Msg("cannot list cronjobs")
+			sLogger.Fatal().Err(err).Msg("cannot list cronjobs")
 		}
 
 		// get statefulsets of the namespace
 		statefulsets, err := cs.AppsV1().StatefulSets(n.Name).List(ctx, metav1.ListOptions{})
 		if err != nil {
-			sLogger.Fatal().
-				Err(err).
-				Msg("cannot list statefulsets")
+			sLogger.Fatal().Err(err).Msg("cannot list statefulsets")
 		}
 
 		/*
@@ -148,10 +140,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			// check and patch deployments
 			go func() {
 				if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.Prefix); err != nil {
-					sLogger.Error().
-						Err(err).
-						Str("object", "deployment").
-						Msg("suspended conformity checks failed")
+					sLogger.Error().Err(err).Str("object", "deployment").Msg("suspended conformity checks failed")
 				}
 				wg.Done()
 			}()
@@ -159,10 +148,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			// check and patch cronjobs
 			go func() {
 				if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
-					sLogger.Error().
-						Err(err).
-						Str("object", "cronjob").
-						Msg("suspended cronjobs conformity checks failed")
+					sLogger.Error().Err(err).Str("object", "cronjob").Msg("suspended cronjobs conformity checks failed")
 				}
 				wg.Done()
 			}()
@@ -170,10 +156,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			// check and patch statefulsets
 			go func() {
 				if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.Prefix); err != nil {
-					sLogger.Error().
-						Err(err).
-						Str("object", "statefulset").
-						Msg("suspended steatfulsets conformity checks failed")
+					sLogger.Error().Err(err).Str("object", "statefulset").Msg("suspended steatfulsets conformity checks failed")
 				}
 				wg.Done()
 			}()
@@ -194,16 +177,14 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			if suspendAt <= now {
 				sLogger.Debug().Msgf("%s is less or equal to now (value: %d, now: %d), updating annotation to %s", DailySuspendTime, suspendAt, now, Suspended)
 				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					res, err := cs.CoreV1().
-						Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+					res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
 					if err != nil {
 						return err
 					}
 					// we set the annotation to suspended
 					res.Annotations[eng.Options.Prefix+DesiredState] = Suspended
 
-					_, err = cs.CoreV1().
-						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+					_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
 					return err
 				}); err != nil {
 					sLogger.Error().Err(err).Msgf("cannot update namespace %s object", n.Name)
@@ -221,9 +202,8 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					goto LOOP
 				}
 			}
-			/*
-				check if nextSuspendTime exists and is past
-			*/
+
+			// check if nextSuspendTime exists and is past
 			if val, ok := n.Annotations[eng.Options.Prefix+nextSuspendTime]; ok {
 				nextSuspendAt, err := time.Parse(time.RFC822Z, val)
 				if err != nil {
@@ -234,16 +214,14 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				if time.Now().Local().Sub(nextSuspendAt) <= eng.RunningDuration {
 					sLogger.Debug().Msgf("%s is less or equal to now (value: %d, now: %d), updating annotation to %s", nextSuspendTime, suspendAt, now, Suspended)
 					if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-						res, err := cs.CoreV1().
-							Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+						res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
 						if err != nil {
 							return err
 						}
 						// we set the annotation to suspended
 						res.Annotations[eng.Options.Prefix+DesiredState] = Suspended
 
-						_, err = cs.CoreV1().
-							Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+						_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
 						return err
 					}); err != nil {
 						sLogger.Error().Err(err).Msgf("cannot update namespace %s object", n.Name)
@@ -318,8 +296,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			if patchedResourcesCounter > 0 {
 				sLogger.Debug().Msgf("it seems that namespace %s has been unsuspended manually, so I am adding the annotation %s to it", n.Name, nextSuspendTime)
 				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					res, err := cs.CoreV1().
-						Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+					res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
 					if err != nil {
 						return err
 					}
@@ -335,8 +312,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					res.Annotations[eng.Options.Prefix+nextSuspendTime] = time.Now().Local().
 						Add(eng.RunningDuration).Format(time.RFC822Z)
 
-					_, err = cs.CoreV1().
-						Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+					_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
 					return err
 				}); err != nil {
 					sLogger.Error().Err(err).Msgf("cannot add %s annotation to namespace %s", nextSuspendTime, n.Name)
