@@ -166,15 +166,12 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			// we ensure that the annotation DailySuspendTime is set
 			now, suspendAt, err = getTimes(n.Annotations[eng.Options.Prefix+DailySuspendTime])
 			if err != nil {
-				sLogger.Error().Err(err).Msgf("cannot parse DailySuspendTime time on namespace %s", n.Name)
+				sLogger.Warn().Err(err).Msgf("cannot parse %s annotation on namespace %s", DailySuspendTime, n.Name)
 				sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
-				continue
 			}
 
-			/*
-				check if DailySuspendTime is past
-			*/
-			if suspendAt <= now {
+			// check if dailySuspendTime is set and past
+			if err == nil && suspendAt <= now {
 				sLogger.Debug().Msgf("%s is less or equal to now (value: %d, now: %d), updating annotation to %s", DailySuspendTime, suspendAt, now, Suspended)
 				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 					res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
