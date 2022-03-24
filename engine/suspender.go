@@ -20,6 +20,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 	eng.Mutex.Unlock()
 
 	for {
+		eng.Mutex.Unlock()
 		// wait for the next namespace to check
 		n := <-eng.Wl
 		start := time.Now()
@@ -318,6 +319,5 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		}
 
 		sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
-		eng.Mutex.Unlock()
 	}
 }
