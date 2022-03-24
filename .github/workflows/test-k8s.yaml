@@ -40,12 +40,13 @@ jobs:
         uses: dorny/paths-filter@v2
         id: filter
         with:
+          # TODO: Once poc validated, add:
+          # - '.github/workflows/test-k8s.yaml'
           filters: |
             run:
               - '*.go'
               - 'go.*'
               - 'Dockerfile'
-              - '.github/workflows/test-k8s.yaml'
               - 'engine/*'
               - 'handlers/*'
               - 'manifests/dev'
