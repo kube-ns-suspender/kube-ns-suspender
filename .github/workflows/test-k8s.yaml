@@ -8,8 +8,6 @@ on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - 'docs/**'
 
   workflow_dispatch:
     inputs:
@@ -28,7 +26,52 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.filter.outputs.run }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Check changes
+        uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            run:
+              - '*.go'
+              - 'go.*'
+              - 'Dockerfile'
+              - '.github/workflows/test-k8s.yaml'
+              - 'engine/*'
+              - 'handlers/*'
+              - 'manifests/dev'
+              - 'manifests/testing-namespace'
+              - 'metrics/*'
+              - 'tests/*'
+              - 'tools/*'
+              - 'webui/*'
+      
+      # https://github.community/t/feature-request-conditional-required-checks/16761/28
+      - name: Update GH commit status
+        if: (github.event_name == 'pull_request' && steps.filter.outputs.run != 'true')
+        env:
+          # Required for gh api call
+          GITHUB_TOKEN: "${{ github.token }}"
+        run: |
+          gh api "/repos/{owner}/{repo}/statuses/${{ github.event.pull_request.head.sha }}" \
+            -f context="E2E k8s testing / build-image" \
+            -f state="success"
+          gh api "/repos/{owner}/{repo}/statuses/${{ github.event.pull_request.head.sha }}" \
+            -f context="E2E k8s testing / test-e2e" \
+            -f state="success"
+
   build-image:
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -69,7 +112,10 @@ jobs:
           retention-days: 2
 
   test-e2e:
-    needs: build-image
+    needs:
+      - changes
+      - build-image
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       # Needed to get config and tests
@@ -126,8 +172,10 @@ jobs:
           retention-days: 5
 
   publish-image:
-    needs: test-e2e
-    if: github.event_name != 'pull_request'
+    needs:
+      - changes
+      - test-e2e
+    if: (needs.changes.outputs.run == 'true' && github.event_name != 'pull_request')
     runs-on: ubuntu-latest
     # Permissions for the Built-in, auto-loaded secrets.GITHUB_TOKEN
     permissions:
