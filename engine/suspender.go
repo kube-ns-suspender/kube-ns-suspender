@@ -28,7 +28,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		// loop
 		eng.Mutex.Lock()
 		sLogger := eng.Logger.With().Str("routine", "suspender").Str("namespace", n.Name).Logger()
-		sLogger.Trace().Msgf("namespace %s received from watcher", n.Name)
+		sLogger.Trace().Msgf("namespace received from watcher")
 
 		// get the namespace state
 		dState := n.Annotations[eng.Options.Prefix+DesiredState]
@@ -44,7 +44,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 		switch dState {
 		case "":
-			sLogger.Debug().Msgf("namespace %s has no %s annotation, it is probably the first time I see it", n.Name, DesiredState)
+			sLogger.Debug().Msgf("namespace has no %s annotation, it is probably the first time I see it", DesiredState)
 			if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 				res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
 				if err != nil {
@@ -56,12 +56,12 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
 				return err
 			}); err != nil {
-				sLogger.Error().Err(err).Msgf("cannot update namespace %s object", n.Name)
+				sLogger.Error().Err(err).Msgf("cannot update namespace object")
 				// we give up and handle the next namespace
-				sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+				sLogger.Debug().Msgf("suspender loop ended, duration: %s", time.Since(start))
 				continue
 			}
-			sLogger.Debug().Msgf("added annotation %s=%s to namespace %s", DesiredState, Running, n.Name)
+			sLogger.Debug().Msgf("added annotation %s=%s to namespace", DesiredState, Running)
 
 			// we now update the value of dState to match the new namespace annotation
 			dState = Running
@@ -70,7 +70,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		default:
 			sLogger.Error().Err(errors.New("state not recognised: "+dState)).Msgf("state %s is not recognised", dState)
 			// we give up and handle the next namespace
-			sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+			sLogger.Debug().Msgf("suspender loop ended, duration: %s", time.Since(start))
 			continue
 		}
 
@@ -131,7 +131,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 		var now, suspendAt int
 	LOOP:
-		sLogger.Debug().Msgf("namespace %s is seen as being %s", n.Name, dState)
+		sLogger.Debug().Msgf("namespace is seen as being %s", dState)
 		switch dState {
 		case Suspended:
 			// the checks will be done concurrently to optimise verification duration
@@ -166,8 +166,8 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			// we ensure that the annotation DailySuspendTime is set
 			now, suspendAt, err = getTimes(n.Annotations[eng.Options.Prefix+DailySuspendTime])
 			if err != nil {
-				sLogger.Warn().Err(err).Msgf("cannot parse %s annotation on namespace %s", DailySuspendTime, n.Name)
-				sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+				sLogger.Warn().Err(err).Msgf("cannot parse %s annotation on namespace", DailySuspendTime)
+				sLogger.Debug().Msgf("suspender loop ended, duration: %s", time.Since(start))
 			}
 
 			// check if dailySuspendTime is set and past
@@ -184,9 +184,9 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
 					return err
 				}); err != nil {
-					sLogger.Error().Err(err).Msgf("cannot update namespace %s object", n.Name)
+					sLogger.Error().Err(err).Msgf("cannot update namespace object")
 					// we give up and handle the next namespace
-					sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+					sLogger.Debug().Msgf("suspender loop ended, duration: %s", time.Since(start))
 					continue
 				} else {
 					sLogger.Debug().Msgf("added annotation %s=%s to namespace, going back to the start of the switch-case", DesiredState, Suspended)
@@ -204,7 +204,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			if val, ok := n.Annotations[eng.Options.Prefix+nextSuspendTime]; ok {
 				nextSuspendAt, err := time.Parse(time.RFC822Z, val)
 				if err != nil {
-					sLogger.Error().Err(err).Msgf("cannot parse %s value %s in time format %s for namespace %s", nextSuspendTime, val, time.RFC822Z, n.Name)
+					sLogger.Error().Err(err).Msgf("cannot parse %s value %s in time format %s for namespace", nextSuspendTime, val, time.RFC822Z)
 					continue
 				}
 
@@ -221,12 +221,12 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 						_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
 						return err
 					}); err != nil {
-						sLogger.Error().Err(err).Msgf("cannot update namespace %s object", n.Name)
+						sLogger.Error().Err(err).Msgf("cannot update namespace object")
 						// we give up and handle the next namespace
-						sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+						sLogger.Debug().Msgf("suspender loop ended, duration: %s", time.Since(start))
 						continue
 					} else {
-						sLogger.Debug().Msgf("added annotation %s=%s to namespace %s, going back to the start of the switch-case", n.Name, DesiredState, Suspended)
+						sLogger.Debug().Msgf("added annotation %s=%s to namespace, going back to the start of the switch-case", DesiredState, Suspended)
 
 						// we now update the value of dState to match the new namespace annotation
 						dState = Suspended
@@ -291,7 +291,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 			// now we can check if patchedResourcesCounter is > 0 and add nextSuspendTime depending of the result
 			if patchedResourcesCounter > 0 {
-				sLogger.Debug().Msgf("it seems that namespace %s has been unsuspended manually, so I am adding the annotation %s to it", n.Name, nextSuspendTime)
+				sLogger.Debug().Msgf("it seems that namespace has been unsuspended manually, so I am adding the annotation %s to it", n.Name, nextSuspendTime)
 				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 					res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
 					if err != nil {
@@ -312,11 +312,11 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
 					return err
 				}); err != nil {
-					sLogger.Error().Err(err).Msgf("cannot add %s annotation to namespace %s", nextSuspendTime, n.Name)
+					sLogger.Error().Err(err).Msgf("cannot add %s annotation to namespace", nextSuspendTime, n.Name)
 				}
 			}
 		}
 
-		sLogger.Debug().Msgf("suspender loop for namespace %s duration: %s", n.Name, time.Since(start))
+		sLogger.Debug().Msgf("suspender loop ended, duration: %s", time.Since(start))
 	}
 }
