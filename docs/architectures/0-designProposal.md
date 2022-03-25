@@ -98,9 +98,9 @@ time to downscale the number of replicas in the namespace
 
 ### Diagram
 
-![Diagram](diagram.png)
+![Diagram](assets/0-designProposal.png)
 
-<a href="http://jgraph.github.io/drawio-github/edit-diagram.html?repo=kube-ns-suspender&path=docs/diagram.png" target="_blank">Edit</a> | <a href="https://app.diagrams.net/#Uhttps%3A%2F%2Fraw.githubusercontent.com%2Fgovirtuo%2Fkube-ns-suspender%2Fmain%2Fdocs%2Fdiagram.png" target="_blank">Edit As New</a> | <a href="https://app.diagrams.net/#Hgovirtuo%2Fkube-ns-suspender%2Fmain%2Fdocs%2Fdiagram.png" target="_blank">Edit in diagrams.net</a>
+<a href="https://app.diagrams.net/#Uhttps%3A%2F%2Fraw.githubusercontent.com%2Fgovirtuo%2Fkube-ns-suspender%2Fmain%2Fdocs%2Farchitectures%2Fassets%2F0-designProposal.png" target="_blank">Edit As New</a> | <a href="https://app.diagrams.net/#Hgovirtuo%2Fkube-ns-suspender%2Fmain%2Fdocs%2Farchitectures%2Fassets%2F0-designProposal.png" target="_blank">Edit in diagrams.net</a>
 
 
 ## Questions
