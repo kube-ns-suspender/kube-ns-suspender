@@ -1,0 +1,25 @@
+# Ignore DevSpace cache and log folder
+.devspace/
+devspace.yaml
+devspace_start.sh
+
+# Ignore files that are not code
+bin/
+docs/
+manifests/
+out/
+tests/
+tmp/
+tools/
+tmp/
+
+# Dont send the git folder to the Docker daemon
+.git
+.gitigore
+
+# Files
+Makefile
+README.md
+LICENCE
+.tools-versions
+.goreleaser.yaml
