@@ -1,7 +1,8 @@
 # Ignore DevSpace cache and log folder
 .devspace/
 ./manifests/dev/*
-out/
 
+# Generated directories
+out/
 tools/bin/
 tmp/
