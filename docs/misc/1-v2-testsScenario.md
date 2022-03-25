@@ -7,13 +7,18 @@
     * check requirements
         + kubectl
     * Deploy `kube-ns-suspender`
+        + Check it is running
     * Deploy Mock manifests (or set it in the `setup_file()` function of every tests)
+        + Check resources are running as expected
 
 2. OnBoard existing namespace
-    * Check Namespace before
-    * Onboard
-    * Check Namespace after
-    * Check `kns` metrics
+    * Pre:
+        + Check Namespace does not have the annotation
+        + Check `kns` metrics
+    * Onboard: set `controllerName=kube-ns-suspender`
+    * Post
+        * Check Namespace does have the annotation
+        * Check `kns` metrics
 
 // Always, collect:
 // * kns logs
@@ -48,22 +53,10 @@
         + CronJob-suspended
         + CronJob-unsuspended
 
-3. ManualSuspension of existing NS (It already has some annotations)
-    * Check before (up)
-        + deployment
-        + statefulSet
-        + CronJob-suspended
-        + CronJob-unsuspended
-    * set `desiredState=Suspended`
-    * Check before (down)
-        + deployment
-        + statefulSet
-        + CronJob-suspended
-        + CronJob-unsuspended
-
 // Always, collect:
 // * kns logs
 // * Namespace definition
+
 
 ## Fearture: nextSuspendTime
 
@@ -89,8 +82,8 @@
         + statefulSet
         + CronJob-suspended
         + CronJob-unsuspended
-    * Set `nextSuspendTime=DATE+10s`
-    * Wait 30s
+    * Set `nextSuspendTime=DATE+1m`
+    * Wait 1m30s
     * Check after (down)
         + deployment
         + statefulSet
@@ -108,12 +101,22 @@
         + statefulSet
         + CronJob-suspended
         + CronJob-unsuspended
-    * Set `dalySuspendTime=DATE+10s`
-    * Wait 30s
+    * Set `dalySuspendTime=DATE+1m`
+    * Wait 1m30s
     * Check after (down)
         + deployment
         + statefulSet
         + CronJob-suspended
         + CronJob-unsuspended
 
-1. CheckNsisSuspended
+2. Check DailySuspendTime supends resources event when user unspend manually after time
+    * Check `dalySuspendTime` is set before now or wait
+    * Unsuspended 
+        + set `desiredState=Running`
+    * Wait 1m
+    * Check `desiredState=Suspended`
+    * Check after (down)
+        + deployment
+        + statefulSet
+        + CronJob-suspended
+        + CronJob-unsuspended
