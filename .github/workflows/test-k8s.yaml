@@ -44,17 +44,15 @@ jobs:
           # - '.github/workflows/test-k8s.yaml'
           filters: |
             run:
-              - '*.go'
+              - 'main.go'
               - 'go.*'
-              - 'Dockerfile'
-              - 'engine/*'
-              - 'handlers/*'
-              - 'manifests/dev'
-              - 'manifests/testing-namespace'
-              - 'metrics/*'
+              - '**/*.go'
+              - '**/*.html'
               - 'tests/*'
               - 'tools/*'
-              - 'webui/*'
+              - 'Dockerfile'
+              - 'manifests/dev'
+              - 'manifests/testing-namespace'
       
       # https://github.community/t/feature-request-conditional-required-checks/16761/28
       - name: Update GH commit status
