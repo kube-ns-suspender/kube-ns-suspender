@@ -17,7 +17,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 	eng.Mutex.Lock()
 	eng.RunningNamespacesList = make(map[string]time.Time)
 	eng.Logger.Info().Str("routine", "suspender").Msg("suspender started")
-	eng.Mutex.Unlock()
 
 	for {
 		eng.Mutex.Unlock()
