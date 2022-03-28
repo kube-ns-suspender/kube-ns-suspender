@@ -8,6 +8,10 @@ on:
   pull_request:
     branches:
       - main
+      - feature/*
+      - chore/*
+      - fix/*
+      - refactor/*
 
   workflow_dispatch:
     inputs:
