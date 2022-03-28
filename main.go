@@ -27,6 +27,7 @@ var (
 func main() {
 	var opt engine.Options
 	var err error
+
 	fs := flag.NewFlagSetWithEnvPrefix(os.Args[0], "KUBE_NS_SUSPENDER", 0)
 	fs.StringVar(&opt.LogLevel, "log-level", "debug", "Log level")
 	fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
@@ -55,7 +56,7 @@ func main() {
 		log.Fatal().Err(err).Msg("cannot create new engine")
 	}
 	eng.Logger.Info().Msgf("engine successfully created in %s", time.Since(start))
-	eng.Logger.Info().Msgf("kube-ns-suspender version %s (built %s)", Version, BuildDate)
+	eng.Logger.Info().Msgf("kube-ns-suspender version '%s' (built %s)", Version, BuildDate)
 
 	// start web ui
 	if eng.Options.EmbeddedUI || eng.Options.WebUIOnly {
@@ -104,6 +105,7 @@ func main() {
 	// disable k8s warnings
 	if eng.Options.NoKubeWarnings {
 		config.WarningHandler = rest.NoWarnings{}
+		eng.Logger.Info().Msgf("Kubernetes warnings disabled")
 	}
 
 	// create the clientset
@@ -114,6 +116,7 @@ func main() {
 	}
 	eng.Logger.Info().Msgf("clientset successfully created in %s", time.Since(start))
 
+	eng.Logger.Info().Msgf("starting 'Watcher' and 'Suspender' routines")
 	ctx := context.Background()
 	go eng.Watcher(ctx, clientset)
 	go eng.Suspender(ctx, clientset)

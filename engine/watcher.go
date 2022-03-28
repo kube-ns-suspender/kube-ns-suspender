@@ -12,20 +12,21 @@ import (
 // watchlist if they have the 'kube-ns-suspender/DesiredState' set.
 func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 	eng.Mutex.Lock()
-	wlLogger := eng.Logger.With().
-		Str("routine", "watcher").Logger()
+	eng.Logger.Info().Str("routine", "watcher").Msg("watcher started")
 	eng.Mutex.Unlock()
-
-	wlLogger.Info().Msg("watcher started")
 
 	var id int
 	for {
+		eng.Mutex.Lock()
+		wLogger := eng.Logger.With().Str("routine", "watcher").Int("inventory_id", id).Logger()
+		eng.Mutex.Unlock()
+
 		start := time.Now()
-		wlLogger.Debug().Int("inventory_id", id).
-			Msg("starting new namespaces inventory")
+		wLogger.Debug().Msg("starting new namespaces inventory")
+
 		ns, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{}) // TODO: think about adding a label to filter here
 		if err != nil {
-			wlLogger.Fatal().
+			wLogger.Fatal().
 				Err(err).
 				Msg("cannot list namespaces")
 		}
@@ -33,13 +34,18 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		eng.Mutex.Lock()
 		// create fresh new variables for metrics
 		var wllen, runningNs, suspendedNs, unknownNs int
+
 		// look for new namespaces to watch
+		wLogger.Debug().Msgf("parsing namespaces list")
 		for _, n := range ns.Items {
 			if value, ok := n.Annotations[eng.Options.Prefix+controllerName]; ok {
+				wLogger.Debug().Msgf("found annotation '%s'", eng.Options.Prefix+controllerName)
 				if value == eng.Options.ControllerName {
 					eng.Wl <- n
-					wlLogger.Trace().Msgf("namespace %s sent to suspender", n.Name)
+					wLogger.Debug().Msgf("annotation '%s' matches controller name (%s)", eng.Options.Prefix+controllerName, eng.Options.ControllerName)
+					wLogger.Debug().Msgf("namespace %s sent to suspender", n.Name)
 					wllen++
+
 					// try to get the desiredState annotation
 					if state, ok := n.Annotations[eng.Options.Prefix+DesiredState]; ok {
 						// increment variables for metrics
@@ -51,26 +57,32 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 						default:
 							unknownNs++
 						}
+					} else {
+						wLogger.Warn().Msgf("annotation '%s' not found", eng.Options.Prefix+DesiredState)
 					}
 				}
 			}
 		}
+
 		// update metrics
-		wlLogger.Debug().Msgf("channel length: %d", wllen)
+		wLogger.Debug().Msgf("Metric - channel length: %d", wllen)
 		eng.MetricsServ.WatchlistLength.Set(float64(wllen))
 
-		wlLogger.Debug().Msgf("running namespaces: %d", runningNs)
+		wLogger.Debug().Msgf("Metric - running namespaces: %d", runningNs)
 		eng.MetricsServ.NumRunningNamspaces.Set(float64(runningNs))
 
-		wlLogger.Debug().Msgf("suspended namespaces: %d", suspendedNs)
+		wLogger.Debug().Msgf("Metric - suspended namespaces: %d", suspendedNs)
 		eng.MetricsServ.NumSuspendedNamspaces.Set(float64(suspendedNs))
 
-		wlLogger.Debug().Msgf("unknown namespaces: %d", unknownNs)
+		wLogger.Debug().Msgf("Metric - unknown namespaces: %d", unknownNs)
 		eng.MetricsServ.NumUnknownNamespaces.Set(float64(unknownNs))
 
 		eng.Mutex.Unlock()
-		wlLogger.Debug().Int("inventory_id", id).Msg("namespaces inventory ended")
-		wlLogger.Debug().Int("inventory_id", id).Msgf("inventory duration: %s", time.Since(start))
+
+		// Question: Why not add `Int("inventory_id", id)` to every log line ?
+		wLogger.Debug().Msg("namespaces inventory ended")
+		wLogger.Debug().Msgf("inventory duration: %s", time.Since(start))
+
 		id++
 		time.Sleep(time.Duration(eng.Options.WatcherIdle) * time.Second)
 	}
