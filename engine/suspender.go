@@ -272,6 +272,35 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			wg.Wait()
 			sLogger.Debug().Str("step", stepName).Msg("checking suspended Conformity done")
 
+			// Cleaning-up annotations
+			sLogger.Debug().Str("step", stepName).Msgf("checking annotation '%s'", eng.Options.Prefix+nextSuspendTime)
+			if _, ok := n.Annotations[eng.Options.Prefix+nextSuspendTime]; ok {
+				sLogger.Debug().Str("step", stepName).Msgf("found annotation '%s', cleanning-up", eng.Options.Prefix+nextSuspendTime)
+				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+					sLogger.Trace().Str("step", stepName).Msgf("get namespace")
+					res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+					if err != nil {
+						return err
+					}
+
+					sLogger.Trace().Str("step", stepName).Msgf("removing namespace annotation '%s'", eng.Options.Prefix+nextSuspendTime)
+					delete(res.Annotations, eng.Options.Prefix+nextSuspendTime)
+
+					sLogger.Trace().Str("step", stepName).Msgf("updating namespace")
+					_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+					return err
+				}); err != nil {
+					sLogger.Error().Err(err).Msgf("cannot update namespace object")
+					// we give up and handle the next namespace
+					sLogger.Debug().Str("step", stepName).Msgf("suspender loop ended, duration: %s", time.Since(start))
+					continue
+				} else {
+					sLogger.Debug().Str("step", stepName).Msgf("removed annotation '%s'", eng.Options.Prefix+nextSuspendTime)
+				}
+			} else {
+				sLogger.Debug().Str("step", stepName).Msgf("annotation '%s' not found, nothing to do", eng.Options.Prefix+nextSuspendTime)
+			}
+
 		case Running:
 			var wg sync.WaitGroup
 			var patchedResourcesCounter int
