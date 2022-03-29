@@ -317,7 +317,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 			// now we can check if patchedResourcesCounter is > 0 and add nextSuspendTime depending of the result
 			if patchedResourcesCounter > 0 {
-				sLogger.Debug().Msgf("namespace has been unsuspended manually, adding the annotation '%s' to it (engined configured duration: '%s')", eng.Options.Prefix+nextSuspendTime, eng.RunningDuration)
+				sLogger.Debug().Str("step", stepName).Msgf("namespace has been unsuspended manually, adding the annotation '%s' to it (engined configured duration: '%s')", eng.Options.Prefix+nextSuspendTime, eng.RunningDuration)
 				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 					sLogger.Trace().Str("step", stepName).Msg("get namespace")
 					res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
@@ -333,15 +333,15 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 						However, it makes it easier to detect if the date is passed, as it returns
 						a complete date, not only the hours and minutes of the day.
 					*/
-					nextSuspendTime := time.Now().Local().Add(eng.RunningDuration).Format(time.RFC822Z)
-					sLogger.Trace().Str("step", stepName).Msgf("setting namespace annotation '%s=%s'", eng.Options.Prefix+nextSuspendTime, nextSuspendTime)
-					res.Annotations[eng.Options.Prefix+nextSuspendTime] = nextSuspendTime
+					nextSuspendTimeValue := time.Now().Local().Add(eng.RunningDuration).Format(time.RFC822Z)
+					sLogger.Trace().Str("step", stepName).Msgf("setting namespace annotation '%s=%s'", eng.Options.Prefix+nextSuspendTime, nextSuspendTimeValue)
+					res.Annotations[eng.Options.Prefix+nextSuspendTime] = nextSuspendTimeValue
 
 					sLogger.Trace().Str("step", stepName).Msg("update namespace")
 					_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
 					return err
 				}); err != nil {
-					sLogger.Error().Err(err).Msgf("cannot add '%s' annotation to namespace", eng.Options.Prefix+nextSuspendTime)
+					sLogger.Error().Err(err).Msgf("cannot add annotation '%s' to namespace", eng.Options.Prefix+nextSuspendTime)
 				}
 			}
 		}
