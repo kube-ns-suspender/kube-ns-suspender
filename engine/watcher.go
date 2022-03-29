@@ -26,9 +26,7 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 
 		ns, err := cs.CoreV1().Namespaces().List(ctx, metav1.ListOptions{}) // TODO: think about adding a label to filter here
 		if err != nil {
-			wLogger.Fatal().
-				Err(err).
-				Msg("cannot list namespaces")
+			wLogger.Fatal().Err(err).Msg("cannot list namespaces")
 		}
 
 		eng.Mutex.Lock()

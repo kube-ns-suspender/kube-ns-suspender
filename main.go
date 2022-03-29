@@ -61,8 +61,7 @@ func main() {
 	// start web ui
 	if eng.Options.EmbeddedUI || eng.Options.WebUIOnly {
 		go func() {
-			uiLogger := eng.Logger.With().
-				Str("routine", "webui").Logger()
+			uiLogger := eng.Logger.With().Str("routine", "webui").Logger()
 			if err := webui.Start(uiLogger, "8080", eng.Options.Prefix); err != nil {
 				uiLogger.Fatal().Err(err).Msg("web UI failed")
 			}

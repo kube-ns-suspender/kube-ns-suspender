@@ -50,7 +50,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			- if dState ends in the default case, it means that the state has not been recognised, so
 			we have to error
 		*/
-		
+
 		stepName = "1/3 - define namespace state from annotation"
 		sLogger.Debug().Str("step", stepName).Msg("starting step")
 
@@ -139,7 +139,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				if nextSuspendDuration < 0 {
 					// NOTICE: Same code than L200-L228
 					sLogger.Debug().Str("step", stepName).
-					Msgf("%s is less or equal to now (value: %d), updating annotation '%s' to '%s'", nextSuspendTime, nextSuspendDuration, eng.Options.Prefix+DesiredState, Suspended)
+						Msgf("%s is less or equal to now (value: %d), updating annotation '%s' to '%s'", nextSuspendTime, nextSuspendDuration, eng.Options.Prefix+DesiredState, Suspended)
 					if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 						sLogger.Trace().Str("step", stepName).Msgf("get namespace")
 						res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
@@ -341,7 +341,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 					_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
 					return err
 				}); err != nil {
-					sLogger.Error().Err(err).Msgf("cannot add '%s' annotation to namespace", eng.Options.Prefix+nextSuspendTime, n.Name)
+					sLogger.Error().Err(err).Msgf("cannot add '%s' annotation to namespace", eng.Options.Prefix+nextSuspendTime)
 				}
 			}
 		}
