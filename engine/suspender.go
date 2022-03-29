@@ -85,61 +85,22 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 		case Running:
 			sLogger.Debug().Str("step", stepName).Msgf("found annotation '%s=%s'", eng.Options.Prefix+DesiredState, dState)
 
-			// check DailySuspendTime annotation
-			sLogger.Debug().Str("step", stepName).Msgf("checking annotation '%s'", eng.Options.Prefix+DailySuspendTime)
-			now, suspendAt, err := getTimes(n.Annotations[eng.Options.Prefix+DailySuspendTime])
-			if err != nil {
-				sLogger.Warn().Err(err).Msgf("cannot parse '%s' annotation on namespace", eng.Options.Prefix+DailySuspendTime)
-			}
-
 			// check if dailySuspendTime is set and past
-			if err == nil && suspendAt <= now {
-				sLogger.Debug().
-					Str("step", stepName).
-					Msgf("%s is less or equal to now (value: %d, now: %d), updating annotation '%s' to '%s'", DailySuspendTime, suspendAt, now, eng.Options.Prefix+DesiredState, Suspended)
-
-				// NOTICE: Seems same content than L51-L69
-				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-					sLogger.Trace().Str("step", stepName).Msgf("get namespace")
-					res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
-					if err != nil {
-						return err
-					}
-					// we set the annotation to suspended
-					sLogger.Trace().Str("step", stepName).Msgf("setting namespace annotation '%s=%s'", eng.Options.Prefix+DesiredState, Suspended)
-					res.Annotations[eng.Options.Prefix+DesiredState] = Suspended
-
-					sLogger.Trace().Str("step", stepName).Msgf("updating namespace")
-					_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
-					return err
-				}); err != nil {
-					sLogger.Error().Err(err).Msgf("cannot update namespace object")
-					// we give up and handle the next namespace
-					sLogger.Debug().Str("step", stepName).Msgf("suspender loop ended, duration: %s", time.Since(start))
-					continue
-				} else {
-					sLogger.Debug().Str("step", stepName).Msgf("added annotation '%s=%s' to namespace, going back to the start of the switch-case", DesiredState, Suspended)
-
-					// we now update the value of dState to match the new namespace annotation
-					dState = Suspended
-					break
-				}
-			}
-
-			// check if nextSuspendTime exists and is past
-			sLogger.Debug().Str("step", stepName).Msgf("checking annotation '%s'", eng.Options.Prefix+nextSuspendTime)
+			sLogger.Debug().Str("step", stepName).Msgf("checking annotation '%s'", eng.Options.Prefix+DailySuspendTime)
 			if val, ok := n.Annotations[eng.Options.Prefix+nextSuspendTime]; ok {
-				nextSuspendAt, err := time.Parse(time.RFC822Z, val)
+				sLogger.Info().Str("step", stepName).Msgf("found annotation '%s'='%s'", eng.Options.Prefix+DailySuspendTime, val)
+
+				now, suspendAt, err := getTimes(val)
 				if err != nil {
-					sLogger.Error().Err(err).Msgf("cannot parse '%s' value '%s' in time format '%s'", nextSuspendTime, val, time.RFC822Z)
-					continue
+					sLogger.Warn().Err(err).Msgf("cannot parse '%s' annotation on namespace", eng.Options.Prefix+DailySuspendTime)
 				}
 
-				nextSuspendDuration := time.Now().Local().Sub(nextSuspendAt)
-				if nextSuspendDuration < 0 {
-					// NOTICE: Same code than L200-L228
-					sLogger.Debug().Str("step", stepName).
-						Msgf("%s is less or equal to now (value: %d), updating annotation '%s' to '%s'", nextSuspendTime, nextSuspendDuration, eng.Options.Prefix+DesiredState, Suspended)
+				if err == nil && suspendAt <= now {
+					sLogger.Debug().
+						Str("step", stepName).
+						Msgf("%s is less or equal to now (value: %d, now: %d), updating annotation '%s' to '%s'", DailySuspendTime, suspendAt, now, eng.Options.Prefix+DesiredState, Suspended)
+
+					// NOTICE: Seems same content than L51-L69
 					if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 						sLogger.Trace().Str("step", stepName).Msgf("get namespace")
 						res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
@@ -166,6 +127,54 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 						break
 					}
 				}
+			} else {
+				sLogger.Warn().Msgf("'%s' annotation not found on namespace", eng.Options.Prefix+DailySuspendTime)
+			}
+
+			// check if nextSuspendTime exists and is past
+			sLogger.Debug().Str("step", stepName).Msgf("checking annotation '%s'", eng.Options.Prefix+nextSuspendTime)
+			if val, ok := n.Annotations[eng.Options.Prefix+nextSuspendTime]; ok {
+				sLogger.Info().Str("step", stepName).Msgf("found annotation '%s'='%s'", eng.Options.Prefix+nextSuspendTime, val)
+
+				nextSuspendAt, err := time.Parse(time.RFC822Z, val)
+				if err != nil {
+					sLogger.Error().Err(err).Msgf("cannot parse '%s' value '%s' in time format '%s'", nextSuspendTime, val, time.RFC822Z)
+					continue
+				}
+
+				nextSuspendDuration := time.Now().Local().Sub(nextSuspendAt)
+				if nextSuspendDuration < 0 {
+					// NOTICE: Same code than L200-L228
+					sLogger.Debug().Str("step", stepName).
+						Msgf("%s is less or equal to now (value: %s), updating annotation '%s' to '%s'", nextSuspendTime, nextSuspendDuration, eng.Options.Prefix+DesiredState, Suspended)
+					if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+						sLogger.Trace().Str("step", stepName).Msgf("get namespace")
+						res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+						if err != nil {
+							return err
+						}
+						// we set the annotation to suspended
+						sLogger.Trace().Str("step", stepName).Msgf("setting namespace annotation '%s=%s'", eng.Options.Prefix+DesiredState, Suspended)
+						res.Annotations[eng.Options.Prefix+DesiredState] = Suspended
+
+						sLogger.Trace().Str("step", stepName).Msgf("updating namespace")
+						_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+						return err
+					}); err != nil {
+						sLogger.Error().Err(err).Msgf("cannot update namespace object")
+						// we give up and handle the next namespace
+						sLogger.Debug().Str("step", stepName).Msgf("suspender loop ended, duration: %s", time.Since(start))
+						continue
+					} else {
+						sLogger.Debug().Str("step", stepName).Msgf("added annotation '%s=%s' to namespace, going back to the start of the switch-case", DesiredState, Suspended)
+
+						// we now update the value of dState to match the new namespace annotation
+						dState = Suspended
+						break
+					}
+				}
+			} else {
+				sLogger.Warn().Msgf("'%s' annotation not found on namespace", eng.Options.Prefix+nextSuspendTime)
 			}
 		case Suspended:
 			sLogger.Debug().Str("step", stepName).Msgf("found annotation '%s=%s'", eng.Options.Prefix+DesiredState, dState)
