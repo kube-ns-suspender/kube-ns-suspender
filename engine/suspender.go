@@ -127,7 +127,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 						break
 					}
 				} else {
-					sLogger.Debug().Str("step", stepName).Msgf("%s is not yet past (value: %s, now: %s), not doing anything", eng.Options.Prefix+DailySuspendTime, suspendAt, now)
+					sLogger.Debug().Str("step", stepName).Msgf("%s is not yet past (value: %d, now: %d), not doing anything", eng.Options.Prefix+DailySuspendTime, suspendAt, now)
 				}
 			} else {
 				sLogger.Warn().Msgf("'%s' annotation not found on namespace", eng.Options.Prefix+DailySuspendTime)
