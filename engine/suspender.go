@@ -138,15 +138,13 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 				nextSuspendAt, err := time.Parse(time.RFC822Z, val)
 				if err != nil {
-					sLogger.Error().Err(err).Msgf("cannot parse '%s' value '%s' in time format '%s'", nextSuspendTime, val, time.RFC822Z)
+					sLogger.Error().Err(err).Msgf("cannot parse '%s' value '%s' in time format '%s'", eng.Options.Prefix+nextSuspendTime, val, time.RFC822Z)
 					continue
 				}
 
-				nextSuspendDuration := time.Now().Local().Sub(nextSuspendAt)
-				if nextSuspendDuration < 0 {
-					// NOTICE: Same code than L200-L228
+				if time.Now().Local().After(nextSuspendAt) {
 					sLogger.Debug().Str("step", stepName).
-						Msgf("%s is less or equal to now (value: %s), updating annotation '%s' to '%s'", nextSuspendTime, nextSuspendDuration, eng.Options.Prefix+DesiredState, Suspended)
+						Msgf("%s is past, updating annotation '%s' to '%s'", eng.Options.Prefix+nextSuspendTime, eng.Options.Prefix+DesiredState, Suspended)
 					if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 						sLogger.Trace().Str("step", stepName).Msgf("get namespace")
 						res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
