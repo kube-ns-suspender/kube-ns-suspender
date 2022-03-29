@@ -87,7 +87,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 			// check if dailySuspendTime is set and past
 			sLogger.Debug().Str("step", stepName).Msgf("checking annotation '%s'", eng.Options.Prefix+DailySuspendTime)
-			if val, ok := n.Annotations[eng.Options.Prefix+nextSuspendTime]; ok {
+			if val, ok := n.Annotations[eng.Options.Prefix+DailySuspendTime]; ok {
 				sLogger.Info().Str("step", stepName).Msgf("found annotation '%s'='%s'", eng.Options.Prefix+DailySuspendTime, val)
 
 				now, suspendAt, err := getTimes(val)
