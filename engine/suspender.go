@@ -98,7 +98,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				if err == nil && suspendAt <= now {
 					sLogger.Debug().
 						Str("step", stepName).
-						Msgf("%s is less or equal to now (value: %d, now: %d), updating annotation '%s' to '%s'", DailySuspendTime, suspendAt, now, eng.Options.Prefix+DesiredState, Suspended)
+						Msgf("%s is less or equal to now (value: %d, now: %d), updating annotation '%s' to '%s'", eng.Options.Prefix+DailySuspendTime, suspendAt, now, eng.Options.Prefix+DesiredState, Suspended)
 
 					// NOTICE: Seems same content than L51-L69
 					if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
@@ -126,6 +126,8 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 						dState = Suspended
 						break
 					}
+				} else {
+					sLogger.Debug().Str("step", stepName).Msgf("%s is not yet past (value: %s, now: %s), not doing anything", eng.Options.Prefix+DailySuspendTime, suspendAt, now)
 				}
 			} else {
 				sLogger.Warn().Msgf("'%s' annotation not found on namespace", eng.Options.Prefix+DailySuspendTime)
@@ -170,6 +172,8 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 						dState = Suspended
 						break
 					}
+				} else {
+					sLogger.Debug().Str("step", stepName).Msgf("%s is not yet past (value: %s, now: %s), not doing anything", nextSuspendTime+DailySuspendTime, nextSuspendAt, time.Now().Local())
 				}
 			} else {
 				sLogger.Warn().Msgf("'%s' annotation not found on namespace", eng.Options.Prefix+nextSuspendTime)
