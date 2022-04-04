@@ -43,7 +43,7 @@ This controller can be splitted into 2 parts:
 
 #### The watcher
 
-The watcher function is charged to check every X seconds (X being set by the flag `-watcher-idle` or by the `KUBE_NS_SUSPENDER_WATCHER_IDLE` environement variable) all the namespaces. When it found namespace that have the `kube-ns-suspender/desiredState` annotation, it sends it to the suspender. It also manages all the metrics that are exposed about the watched namespaces states.
+The watcher function is charged to check every X seconds (X being set by the flag `--watcher-idle` or by the `KUBE_NS_SUSPENDER_WATCHER_IDLE` environement variable) all the namespaces. When it found namespace that have the `kube-ns-suspender/controllerName` annotation, it sends it to the suspender. It also manages all the metrics that are exposed about the watched namespaces states.
 
 #### The suspender
 
@@ -51,18 +51,18 @@ The suspender function does all the work of reading namespaces/resources annotat
 
 ### Flags
 
-| Flag                 | Description                      |      Default      |
-| -------------------- | -------------------------------- | :---------------: |
-| `--controller-name`  | Unique name of the contoller     | kube-ns-suspender |
-| `--human`            | Disable JSON logging             |       false       |
-| `--log-level`        | Log level                        |       debug       |
-| `--no-kube-warnings` | Disable Kubernetes warnings      |       false       |
-| `--prefix`           | Prefix to use for annotations    | kube-ns-suspender |
-| `--running-duration` | Running duration                 |        4h         |
-| `--timezone`         | Timezone to use                  |   Europe/Paris    |
-| `--ui-embedded`      | Start UI in background           |       false       |
-| `--ui-only`          | Start UI only                    |       false       |
-| `--watcher-idle`     | Watcher idle duration in seconds |        15         |
+| Flag                 | Description                      |      Default      | Env var                              |
+| -------------------- | -------------------------------- | :---------------: | ------------------------------------ |
+| `--controller-name`  | Unique name of the contoller     | kube-ns-suspender | `KUBE_NS_SUSPENDER_CONTROLLER_NAME`  |
+| `--human`            | Disable JSON logging             |       false       | `KUBE_NS_SUSPENDER_HUMAN`            |
+| `--log-level`        | Log level                        |       debug       | `KUBE_NS_SUSPENDER_LOG_LEVEL`        |
+| `--no-kube-warnings` | Disable Kubernetes warnings      |       false       | `KUBE_NS_SUSPENDER_NO_KUBE_WARNINGS` |
+| `--prefix`           | Prefix to use for annotations    | kube-ns-suspender | `KUBE_NS_SUSPENDER_PREFIX`           |
+| `--running-duration` | Running duration                 |        4h         | `KUBE_NS_SUSPENDER_RUNNING_DURATION` |
+| `--timezone`         | Timezone to use                  |   Europe/Paris    | `KUBE_NS_SUSPENDER_TIMEZONE`         |
+| `--ui-embedded`      | Start UI in background           |       false       | `KUBE_NS_SUSPENDER_UI_EMBEDDED`      |
+| `--ui-only`          | Start UI only                    |       false       | `KUBE_NS_SUSPENDER_UI_ONLY`          |
+| `--watcher-idle`     | Watcher idle duration in seconds |        15         | `KUBE_NS_SUSPENDER_WATCHER_IDLE`     |
 
 ### Resources
 
