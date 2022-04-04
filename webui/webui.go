@@ -4,7 +4,6 @@ import (
 	"context"
 	"embed"
 	"html/template"
-	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -90,7 +89,7 @@ func createRouter(l zerolog.Logger, prefix string) *mux.Router {
 	r.Handle("/unsuspend", withLogger(h.unsuspendHandler)).Methods(http.MethodPost)
 	r.Handle("/bug", withLogger(h.bugHandler)).Methods(http.MethodGet)
 	r.Handle("/list", withLogger(h.listHandler)).Methods(http.MethodGet)
-	r.NotFoundHandler = http.HandlerFunc(errorPage)
+	r.NotFoundHandler = withLogger(h.errorPage)
 
 	return r
 }
@@ -109,7 +108,7 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 
 	var nsList NamespacesList
 	for _, n := range namespaces.Items {
-		if n.Annotations[h.prefix+"desiredState"] == engine.Suspended {
+		if n.Annotations[h.prefix+engine.DesiredState] == engine.Suspended {
 			nsList.Names = append(nsList.Names, n.Name)
 		}
 	}
@@ -169,17 +168,17 @@ func (h handler) bugHandler(w http.ResponseWriter, r *http.Request, l zerolog.Lo
 	}
 }
 
-func errorPage(w http.ResponseWriter, r *http.Request) {
+func (h handler) errorPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
 	tmpl, err := template.ParseFS(assets, "assets/404.html", "assets/templates/head.html",
 		"assets/templates/style.html", "assets/templates/footer.html")
 	if err != nil {
-		log.Fatalf("Can not parse home page : %v", err)
+		l.Error().Err(err).Str("page", "/bug").Msg("cannot parse templates")
 	}
 
 	w.WriteHeader(http.StatusNotFound)
 	err = tmpl.Execute(w, nil)
 	if err != nil {
-		log.Fatalf("Can not execute templates for home page : %v", err)
+		l.Error().Err(err).Str("page", "/bug").Msg("cannot execute templates")
 	}
 }
 
@@ -192,13 +191,13 @@ func (h handler) listHandler(w http.ResponseWriter, r *http.Request, l zerolog.L
 
 	namespaces, err := cs.CoreV1().Namespaces().List(context.TODO(), v1.ListOptions{})
 	if err != nil {
-		l.Error().Err(err).Str("page", "/").Msg("cannot list namespaces")
+		l.Error().Err(err).Str("page", "/list").Msg("cannot list namespaces")
 	}
 
 	var nsList ListNamespacesAndStates
 	for _, n := range namespaces.Items {
-		if _, ok := n.Annotations[h.prefix+"dailySuspendTime"]; ok {
-			val := n.Annotations[h.prefix+"desiredState"]
+		if _, ok := n.Annotations[h.prefix+engine.DailySuspendTime]; ok {
+			val := n.Annotations[h.prefix+engine.DesiredState]
 			ns := Namespace{Name: n.Name}
 			switch val {
 			case engine.Suspended:
@@ -223,7 +222,7 @@ func patchNamespace(name, prefix string) (bool, error) {
 		if err != nil {
 			return err
 		}
-		result.Annotations[prefix+"desiredState"] = engine.Running
+		result.Annotations[prefix+engine.DesiredState] = engine.Running
 		var updateOpts metav1.UpdateOptions
 		_, err = cs.CoreV1().Namespaces().Update(context.TODO(), result, updateOpts)
 		return err

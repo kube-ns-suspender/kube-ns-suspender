@@ -27,16 +27,17 @@ var (
 func main() {
 	var opt engine.Options
 	var err error
+
 	fs := flag.NewFlagSetWithEnvPrefix(os.Args[0], "KUBE_NS_SUSPENDER", 0)
 	fs.StringVar(&opt.LogLevel, "log-level", "debug", "Log level")
 	fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
 	fs.StringVar(&opt.Prefix, "prefix", "kube-ns-suspender/", "Prefix to use for annotations")
+	fs.StringVar(&opt.ControllerName, "controller-name", "kube-ns-suspender", "Unique name of the contoller")
 	fs.StringVar(&opt.RunningDuration, "running-duration", "4h", "Running duration")
 	fs.IntVar(&opt.WatcherIdle, "watcher-idle", 15, "Watcher idle duration (in seconds)")
-	fs.BoolVar(&opt.DryRun, "dry-run", false, "Run in dry run mode")
 	fs.BoolVar(&opt.NoKubeWarnings, "no-kube-warnings", false, "Disable Kubernetes warnings")
 	fs.BoolVar(&opt.HumanLogs, "human", false, "Disable JSON logging")
-	fs.BoolVar(&opt.EmbededUI, "ui-embedded", false, "Start UI in background")
+	fs.BoolVar(&opt.EmbeddedUI, "ui-embedded", false, "Start UI in background")
 	fs.BoolVar(&opt.WebUIOnly, "ui-only", false, "Start UI only")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
@@ -55,13 +56,12 @@ func main() {
 		log.Fatal().Err(err).Msg("cannot create new engine")
 	}
 	eng.Logger.Info().Msgf("engine successfully created in %s", time.Since(start))
-	eng.Logger.Info().Msgf("kube-ns-suspender version %s (built %s)", Version, BuildDate)
+	eng.Logger.Info().Msgf("kube-ns-suspender version '%s' (built %s)", Version, BuildDate)
 
 	// start web ui
-	if eng.Options.EmbededUI || eng.Options.WebUIOnly {
+	if eng.Options.EmbeddedUI || eng.Options.WebUIOnly {
 		go func() {
-			uiLogger := eng.Logger.With().
-				Str("routine", "webui").Logger()
+			uiLogger := eng.Logger.With().Str("routine", "webui").Logger()
 			if err := webui.Start(uiLogger, "8080", eng.Options.Prefix); err != nil {
 				uiLogger.Fatal().Err(err).Msg("web UI failed")
 			}
@@ -79,6 +79,8 @@ func main() {
 	eng.Logger.Debug().Msgf("running duration: %s", eng.RunningDuration)
 	eng.Logger.Debug().Msgf("log level: %s", eng.Options.LogLevel)
 	eng.Logger.Debug().Msgf("json logging: %v", !eng.Options.HumanLogs)
+	eng.Logger.Debug().Msgf("controller name: %v", eng.Options.ControllerName)
+	eng.Logger.Debug().Msgf("annotations prefix: %v", eng.Options.Prefix)
 
 	// create metrics server
 	start = time.Now()
@@ -102,6 +104,7 @@ func main() {
 	// disable k8s warnings
 	if eng.Options.NoKubeWarnings {
 		config.WarningHandler = rest.NoWarnings{}
+		eng.Logger.Info().Msgf("Kubernetes warnings disabled")
 	}
 
 	// create the clientset
@@ -112,6 +115,7 @@ func main() {
 	}
 	eng.Logger.Info().Msgf("clientset successfully created in %s", time.Since(start))
 
+	eng.Logger.Info().Msgf("starting 'Watcher' and 'Suspender' routines")
 	ctx := context.Background()
 	go eng.Watcher(ctx, clientset)
 	go eng.Suspender(ctx, clientset)

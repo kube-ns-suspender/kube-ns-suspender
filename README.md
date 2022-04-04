@@ -1,5 +1,7 @@
 # kube-ns-suspender
 
+<img align="center" src="./docs/images/kube-ns-suspender.png" width="335" height="228"/>
+
 Kubernetes controller managing namespaces life cycle.
 
 - [kube-ns-suspender](#kube-ns-suspender)
@@ -13,6 +15,10 @@ Kubernetes controller managing namespaces life cycle.
     - [States](#states)
     - [Annotations](#annotations)
       - [On namespaces](#on-namespaces)
+        - [`controllerName`](#controllername)
+        - [`dailySuspendTime`](#dailysuspendtime)
+        - [`desiredState`](#desiredstate)
+        - [`nextSuspendTime`](#nextsuspendtime)
       - [On resources](#on-resources)
         - [Deployments and Stateful Sets](#deployments-and-stateful-sets)
         - [Cronjobs](#cronjobs)
@@ -45,7 +51,18 @@ The suspender function does all the work of reading namespaces/resources annotat
 
 ### Flags
 
-/* explain the different flags, the associated env vars... */
+| Flag                 | Description                      |      Default      |
+| -------------------- | -------------------------------- | :---------------: |
+| `--controller-name`  | Unique name of the contoller     | kube-ns-suspender |
+| `--human`            | Disable JSON logging             |       false       |
+| `--log-level`        | Log level                        |       debug       |
+| `--no-kube-warnings` | Disable Kubernetes warnings      |       false       |
+| `--prefix`           | Prefix to use for annotations    | kube-ns-suspender |
+| `--running-duration` | Running duration                 |        4h         |
+| `--timezone`         | Timezone to use                  |   Europe/Paris    |
+| `--ui-embedded`      | Start UI in background           |       false       |
+| `--ui-only`          | Start UI only                    |       false       |
+| `--watcher-idle`     | Watcher idle duration in seconds |        15         |
 
 ### Resources
 
@@ -57,26 +74,48 @@ Currently supported resources are:
 
 ### States
 
-Namespaces watched by `kube-ns-suspender` can be in 3 differents states:
+Namespaces watched by `kube-ns-suspender` can be in 2 differents states:
 
 * Running: the namespace is "up", and all the resources have the desired number of replicas.
 * Suspended: the namespace is "paused", and all the supported resources are scaled down to 0 or suspended.
 
 ### Annotations
 
-Annotations are employed to save the original state of a resource.
+We assume here that the prefix used (`--prefix`) is the one by default.
 
 #### On namespaces
 
-In order for a namespace to be watched by the controller, it needs to have the `kube-ns-suspender/desiredState` annotation set to any of the supported values, which are:
+##### **controllerName**
 
-* `Running`
-* `Suspended`
+In order for a namespace to be watched by the controller, it needs to have the `kube-ns-suspender/controllerName` annotation set to the same value as  `--controller-name`.
 
-To be suspended at a given time, a namespace must have the annotation `kube-ns-suspender/suspendAt` set to a valid value.
+Then, the namespace will be attributed a state, which can be either `Running` or `Suspended` (depending if `kube-ns-suspender/dailySuspendTime` is past).
+
+##### **dailySuspendTime**
+
+To be automatically suspended at a given time, a namespace must have the annotation `kube-ns-suspender/dailySuspendTime` set to a valid value.
 Valid values are any values that match the [`time.Kitchen`](https://pkg.go.dev/time#pkg-constants) time format, for example: `8:15PM`, `12:45AM`...
 
+##### **desiredState**
+ 
+If you want to unsuspend a namespace, you have to manually edit the annotation of the namespace:
+
+`kube-ns-suspender/desiredState: Suspended` -> `kube-ns-suspender/desiredState: Running`.
+
+##### **nextSuspendTime**
+
+When unsuspending a namespace, a new annotation will be added automically: `kube-ns-suspender/nextSuspendTime`.
+
+This annotation contains the date at which the namespace will be automatically suspended again (following the format [`time.RFC822Z`](https://pkg.go.dev/time#pkg-constants)). The default value set by the controller can be tweaked with the flag `--running-duration`. The annotation value can also be edited manually if needed.
+
+> :memo:
+>
+> `dailySuspendTime` has a higher priority than `nextSuspendTime`
+>
+
 #### On resources
+
+Annotations are employed to save the original state of a resource. 
 
 ##### Deployments and Stateful Sets
 

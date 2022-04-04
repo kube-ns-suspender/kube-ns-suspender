@@ -10,9 +10,26 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+// those states constants they are used with the annotation desiredState.
+// they need to be exported as they are used across packages (in webui...)
 const (
 	Running   = "Running"
 	Suspended = "Suspended"
+)
+
+// annotations constants
+const (
+	// annotations used on namespaces
+	nextSuspendTime = "nextSuspendTime"
+	controllerName  = "controllerName"
+
+	// those ones need to be exported as they are used
+	// in the webui package
+	DailySuspendTime = "dailySuspendTime"
+	DesiredState     = "desiredState"
+
+	// annotation used on resources (deployments, statefulsets...)
+	originalReplicas = "originalReplicas"
 )
 
 type Engine struct {
@@ -26,13 +43,13 @@ type Engine struct {
 }
 
 type Options struct {
-	WatcherIdle                       int
-	RunningDuration                   string
-	LogLevel                          string
-	TZ                                string
-	Prefix                            string
-	DryRun, NoKubeWarnings, HumanLogs bool
-	EmbededUI, WebUIOnly              bool
+	WatcherIdle               int
+	RunningDuration           string
+	LogLevel                  string
+	TZ                        string
+	Prefix, ControllerName    string
+	NoKubeWarnings, HumanLogs bool
+	EmbeddedUI, WebUIOnly     bool
 }
 
 // New returns a new engine instance
