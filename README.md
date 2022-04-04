@@ -1,5 +1,7 @@
 # kube-ns-suspender
 
+<img align="center" src="./docs/images/kube-ns-suspender.png" width="335" height="228"/>
+
 Kubernetes controller managing namespaces life cycle.
 
 - [kube-ns-suspender](#kube-ns-suspender)
@@ -45,7 +47,18 @@ The suspender function does all the work of reading namespaces/resources annotat
 
 ### Flags
 
-/* explain the different flags, the associated env vars... */
+| Flag                 | Description                      |      Default      |
+| -------------------- | -------------------------------- | :---------------: |
+| `--controller-name`  | Unique name of the contoller     | kube-ns-suspender |
+| `--human`            | Disable JSON logging             |       false       |
+| `--log-level`        | Log level                        |       debug       |
+| `--no-kube-warnings` | Disable Kubernetes warnings      |       false       |
+| `--prefix`           | Prefix to use for annotations    | kube-ns-suspender |
+| `--running-duration` | Running duration                 |        4h         |
+| `--timezone`         | Timezone to use                  |   Europe/Paris    |
+| `--ui-embedded`      | Start UI in background           |       false       |
+| `--ui-only`          | Start UI only                    |       false       |
+| `--watcher-idle`     | Watcher idle duration in seconds |        15         |
 
 ### Resources
 
@@ -57,7 +70,7 @@ Currently supported resources are:
 
 ### States
 
-Namespaces watched by `kube-ns-suspender` can be in 3 differents states:
+Namespaces watched by `kube-ns-suspender` can be in 2 differents states:
 
 * Running: the namespace is "up", and all the resources have the desired number of replicas.
 * Suspended: the namespace is "paused", and all the supported resources are scaled down to 0 or suspended.
