@@ -77,17 +77,30 @@ Namespaces watched by `kube-ns-suspender` can be in 2 differents states:
 
 ### Annotations
 
-Annotations are employed to save the original state of a resource.
+Annotations are employed to save the original state of a resource. We assume here that the prefix used (`--prefix`) is the one by default.
 
 #### On namespaces
 
-In order for a namespace to be watched by the controller, it needs to have the `kube-ns-suspender/desiredState` annotation set to any of the supported values, which are:
+In order for a namespace to be watched by the controller, it needs to have the `kube-ns-suspender/controllerName` annotation set to the same value as  `--controller-name`.
 
-* `Running`
-* `Suspended`
+Then, the namespace will be attributed a state, which can be either `Running` or `Suspended` (depending if `kube-ns-suspender/dailySuspendTime` is past).
 
-To be suspended at a given time, a namespace must have the annotation `kube-ns-suspender/suspendAt` set to a valid value.
+To be automatically suspended at a given time, a namespace must have the annotation `kube-ns-suspender/dailySuspendTime` set to a valid value.
 Valid values are any values that match the [`time.Kitchen`](https://pkg.go.dev/time#pkg-constants) time format, for example: `8:15PM`, `12:45AM`...
+
+> :exclamation: **Important**
+> 
+>If you want to manually unsuspend a namespace, you have to manually edit the state of the namespace:
+>
+>`kube-ns-suspender/desiredState: Suspended` -> `kube-ns-suspender/desiredState: Running`.
+
+
+When unsuspending a namespace a new annotation will be put on the namespace: `kube-ns-suspender/nextSuspendTime`: this annotation contains the date at which the namespace will be automatically suspended again. It can be tweaked with the flag `--running-duration`.
+
+> :memo:
+>
+> `dailySuspendTime` has a higher priority than `nextSuspendTime`
+>
 
 #### On resources
 
