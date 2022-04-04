@@ -77,25 +77,30 @@ Namespaces watched by `kube-ns-suspender` can be in 2 differents states:
 
 ### Annotations
 
-Annotations are employed to save the original state of a resource. We assume here that the prefix used (`--prefix`) is the one by default.
+We assume here that the prefix used (`--prefix`) is the one by default.
 
 #### On namespaces
+
+##### `kube-ns-suspender/controllerName`
 
 In order for a namespace to be watched by the controller, it needs to have the `kube-ns-suspender/controllerName` annotation set to the same value as  `--controller-name`.
 
 Then, the namespace will be attributed a state, which can be either `Running` or `Suspended` (depending if `kube-ns-suspender/dailySuspendTime` is past).
 
+##### `kube-ns-suspender/dailySuspendTime`
+
 To be automatically suspended at a given time, a namespace must have the annotation `kube-ns-suspender/dailySuspendTime` set to a valid value.
 Valid values are any values that match the [`time.Kitchen`](https://pkg.go.dev/time#pkg-constants) time format, for example: `8:15PM`, `12:45AM`...
 
-> :exclamation: **Important**
-> 
->If you want to manually unsuspend a namespace, you have to manually edit the state of the namespace:
->
->`kube-ns-suspender/desiredState: Suspended` -> `kube-ns-suspender/desiredState: Running`.
+##### `kube-ns-suspender/desiredState`
+ 
+If you want to unsuspend a namespace, you have to manually edit the annotation of the namespace:
 
+`kube-ns-suspender/desiredState: Suspended` -> `kube-ns-suspender/desiredState: Running`.
 
-When unsuspending a namespace a new annotation will be put on the namespace: `kube-ns-suspender/nextSuspendTime`: this annotation contains the date at which the namespace will be automatically suspended again. It can be tweaked with the flag `--running-duration`.
+##### `kube-ns-suspender/nextSuspendTime`
+
+When unsuspending a namespace a new annotation will be put on the namespace: `kube-ns-suspender/nextSuspendTime`: this annotation contains the date at which the namespace will be automatically suspended again (following the format [`time.RFC822Z`](https://pkg.go.dev/time#pkg-constants)). The default value can be tweaked with the flag `--running-duration` and the value can be edited manually.
 
 > :memo:
 >
@@ -103,6 +108,8 @@ When unsuspending a namespace a new annotation will be put on the namespace: `ku
 >
 
 #### On resources
+
+Annotations are employed to save the original state of a resource. 
 
 ##### Deployments and Stateful Sets
 
