@@ -51,9 +51,9 @@ The suspender function does all the work of reading namespaces/resources annotat
 
 ### Flags
 
-| Flag                 | Description                      |      Default      | Env var                              |
+| Flag                 | Description                      |      Default      | Environment variable                 |
 | -------------------- | -------------------------------- | :---------------: | ------------------------------------ |
-| `--controller-name`  | Unique name of the contoller     | kube-ns-suspender | `KUBE_NS_SUSPENDER_CONTROLLER_NAME`  |
+| `--controller-name`  | Unique name of the controller    | kube-ns-suspender | `KUBE_NS_SUSPENDER_CONTROLLER_NAME`  |
 | `--human`            | Disable JSON logging             |       false       | `KUBE_NS_SUSPENDER_HUMAN`            |
 | `--log-level`        | Log level                        |       debug       | `KUBE_NS_SUSPENDER_LOG_LEVEL`        |
 | `--no-kube-warnings` | Disable Kubernetes warnings      |       false       | `KUBE_NS_SUSPENDER_NO_KUBE_WARNINGS` |

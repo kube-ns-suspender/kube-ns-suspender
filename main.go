@@ -32,7 +32,7 @@ func main() {
 	fs.StringVar(&opt.LogLevel, "log-level", "debug", "Log level")
 	fs.StringVar(&opt.TZ, "timezone", "Europe/Paris", "Timezone to use")
 	fs.StringVar(&opt.Prefix, "prefix", "kube-ns-suspender/", "Prefix to use for annotations")
-	fs.StringVar(&opt.ControllerName, "controller-name", "kube-ns-suspender", "Unique name of the contoller")
+	fs.StringVar(&opt.ControllerName, "controller-name", "kube-ns-suspender", "Unique name of the controller")
 	fs.StringVar(&opt.RunningDuration, "running-duration", "4h", "Running duration")
 	fs.IntVar(&opt.WatcherIdle, "watcher-idle", 15, "Watcher idle duration (in seconds)")
 	fs.BoolVar(&opt.NoKubeWarnings, "no-kube-warnings", false, "Disable Kubernetes warnings")
