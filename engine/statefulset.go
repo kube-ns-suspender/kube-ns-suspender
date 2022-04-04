@@ -50,7 +50,7 @@ func checkSuspendedStatefulsetsConformity(ctx context.Context, l zerolog.Logger,
 
 // patchStatefulsetSuspend updates the number of replicas of a given statefulset
 func patchStatefulsetReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, ss, prefix string, repl int) error {
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, err := cs.AppsV1().StatefulSets(ns).Get(ctx, ss, metav1.GetOptions{})
 		if err != nil {
 			return err
@@ -64,8 +64,4 @@ func patchStatefulsetReplicas(ctx context.Context, cs *kubernetes.Clientset, ns,
 		_, err = cs.AppsV1().StatefulSets(ns).Update(ctx, result, metav1.UpdateOptions{})
 		return err
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }

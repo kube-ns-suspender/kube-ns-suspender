@@ -52,7 +52,7 @@ func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, 
 
 // patchDeploymentReplicas updates the number of replicas of a given deployment
 func patchDeploymentReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, d, prefix string, repl int) error {
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, err := cs.AppsV1().Deployments(ns).Get(ctx, d, metav1.GetOptions{})
 		if err != nil {
 			return err
@@ -66,8 +66,4 @@ func patchDeploymentReplicas(ctx context.Context, cs *kubernetes.Clientset, ns, 
 		_, err = cs.AppsV1().Deployments(ns).Update(ctx, result, metav1.UpdateOptions{})
 		return err
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }

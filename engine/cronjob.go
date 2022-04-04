@@ -38,7 +38,7 @@ func checkSuspendedCronjobsConformity(ctx context.Context, l zerolog.Logger, cro
 
 // patchCronjobSuspend updates the suspend state of a giver cronjob
 func patchCronjobSuspend(ctx context.Context, cs *kubernetes.Clientset, ns, c string, suspend bool) error {
-	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, err := cs.BatchV1beta1().CronJobs(ns).Get(ctx, c, metav1.GetOptions{})
 		if err != nil {
 			return err
@@ -47,8 +47,4 @@ func patchCronjobSuspend(ctx context.Context, cs *kubernetes.Clientset, ns, c st
 		_, err = cs.BatchV1beta1().CronJobs(ns).Update(ctx, result, metav1.UpdateOptions{})
 		return err
 	})
-	if err != nil {
-		return err
-	}
-	return nil
 }
