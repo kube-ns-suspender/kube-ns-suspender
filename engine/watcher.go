@@ -31,11 +31,11 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		// look for new namespaces to watch
 		wLogger.Debug().Msgf("parsing namespaces list")
 		for _, n := range ns.Items {
-			if value, ok := n.Annotations[eng.Options.Prefix+controllerName]; ok {
-				wLogger.Debug().Msgf("found annotation '%s'", eng.Options.Prefix+controllerName)
+			if value, ok := n.Annotations[eng.Options.Prefix+ControllerName]; ok {
+				wLogger.Debug().Msgf("found annotation '%s'", eng.Options.Prefix+ControllerName)
 				if value == eng.Options.ControllerName {
 					eng.Wl <- n
-					wLogger.Debug().Msgf("annotation '%s' matches controller name (%s)", eng.Options.Prefix+controllerName, eng.Options.ControllerName)
+					wLogger.Debug().Msgf("annotation '%s' matches controller name (%s)", eng.Options.Prefix+ControllerName, eng.Options.ControllerName)
 					wLogger.Debug().Msgf("namespace %s sent to suspender", n.Name)
 					wllen++
 

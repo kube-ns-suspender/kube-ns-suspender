@@ -51,12 +51,13 @@ type loggingHandler struct {
 // this struct allows us to propagate the prefix variable
 // into the HTTP handlers
 type handler struct {
-	prefix string
+	prefix         string
+	controllerName string
 }
 
 var cs *kubernetes.Clientset
 
-func Start(l zerolog.Logger, port, prefix string) error {
+func Start(l zerolog.Logger, port, prefix, cn string) error {
 	// create the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -71,7 +72,7 @@ func Start(l zerolog.Logger, port, prefix string) error {
 
 	srv := http.Server{
 		Addr:    ":" + port,
-		Handler: createRouter(l, prefix),
+		Handler: createRouter(l, prefix, cn),
 	}
 	if err := srv.ListenAndServe(); err != nil {
 		return err
@@ -79,10 +80,11 @@ func Start(l zerolog.Logger, port, prefix string) error {
 	return nil
 }
 
-func createRouter(l zerolog.Logger, prefix string) *mux.Router {
+func createRouter(l zerolog.Logger, prefix, cn string) *mux.Router {
 	r := mux.NewRouter()
 	h := handler{
-		prefix: prefix,
+		prefix:         prefix,
+		controllerName: cn,
 	}
 	withLogger := loggingHandlerFactory(l)
 	r.Handle("/", withLogger(h.homePage)).Methods(http.MethodGet)
@@ -196,7 +198,7 @@ func (h handler) listHandler(w http.ResponseWriter, r *http.Request, l zerolog.L
 
 	var nsList ListNamespacesAndStates
 	for _, n := range namespaces.Items {
-		if _, ok := n.Annotations[h.prefix+engine.DailySuspendTime]; ok {
+		if a, ok := n.Annotations[h.prefix+engine.ControllerName]; ok && a == h.controllerName {
 			val := n.Annotations[h.prefix+engine.DesiredState]
 			ns := Namespace{Name: n.Name}
 			switch val {
