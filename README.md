@@ -104,7 +104,9 @@ If you want to unsuspend a namespace, you have to manually edit the annotation o
 
 ##### **nextSuspendTime**
 
-When unsuspending a namespace a new annotation will be put on the namespace: `kube-ns-suspender/nextSuspendTime`: this annotation contains the date at which the namespace will be automatically suspended again (following the format [`time.RFC822Z`](https://pkg.go.dev/time#pkg-constants)). The default value can be tweaked with the flag `--running-duration` and the value can be edited manually.
+When unsuspending a namespace, a new annotation will be added automically: `kube-ns-suspender/nextSuspendTime`.
+
+This annotation contains the date at which the namespace will be automatically suspended again (following the format [`time.RFC822Z`](https://pkg.go.dev/time#pkg-constants)). The default value set by the controller can be tweaked with the flag `--running-duration`. The annotation value can also be edited manually if needed.
 
 > :memo:
 >
