@@ -107,7 +107,7 @@ func createRouter(l zerolog.Logger, prefix, cn, v, bd string) *mux.Router {
 
 	withLogger := loggingHandlerFactory(l)
 	r.Handle("/", withLogger(h.homePage)).Methods(http.MethodGet)
-	r.Handle("/unsuspend", withLogger(h.unsuspendHandler)).Methods(http.MethodPost)
+	r.Handle("/unsuspend", withLogger(h.unsuspendPage)).Methods(http.MethodPost)
 	r.Handle("/bug", withLogger(h.bugPage)).Methods(http.MethodGet)
 	r.Handle("/list", withLogger(h.listPage)).Methods(http.MethodGet)
 	r.NotFoundHandler = withLogger(h.errorPage)
@@ -150,9 +150,9 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 	}
 }
 
-// unsuspendHandler handlers the POST requests done by users to unsuspend a given
+// unsuspendPage handlers the POST requests done by users to unsuspend a given
 // namespace selected on the home page
-func (h handler) unsuspendHandler(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
+func (h handler) unsuspendPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
 	tmpl, err := template.ParseFS(assets, "assets/unsuspend.html", "assets/templates/head.html",
 		"assets/templates/style.html", "assets/templates/footer.html")
 	if err != nil {
