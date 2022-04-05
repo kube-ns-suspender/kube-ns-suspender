@@ -15,13 +15,14 @@ Kubernetes controller managing namespaces life cycle.
     - [States](#states)
     - [Annotations](#annotations)
       - [On namespaces](#on-namespaces)
-        - [`controllerName`](#controllername)
-        - [`dailySuspendTime`](#dailysuspendtime)
-        - [`desiredState`](#desiredstate)
-        - [`nextSuspendTime`](#nextsuspendtime)
+        - [**controllerName**](#controllername)
+        - [**dailySuspendTime**](#dailysuspendtime)
+        - [**desiredState**](#desiredstate)
+        - [**nextSuspendTime**](#nextsuspendtime)
       - [On resources](#on-resources)
         - [Deployments and Stateful Sets](#deployments-and-stateful-sets)
         - [Cronjobs](#cronjobs)
+    - [Metrics](#metrics)
   - [Development flow](#development-flow)
   - [Testing](#testing)
   - [Contributing](#contributing)
@@ -124,6 +125,10 @@ As those resources have a `spec.replicas` value, they must have a `kube-ns-suspe
 ##### Cronjobs
 
 Cronjobs have a `spec.suspend` value that indicates if they must be runned or not. As this value is a boolean, **no other annotations are required**.
+
+### Metrics
+
+`kube-ns-suspender` comes with its own Prometheus exporter. It starts automatically and listens on `0.0.0.0:2112` by default.
 
 ## Development flow
 
