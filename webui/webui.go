@@ -21,11 +21,11 @@ import (
 var assets embed.FS
 
 type Page struct {
-	NL        NamespacesList
-	UN        UnsuspendedNamespace
-	LNS       ListNamespacesAndStates
-	Version   string
-	BuildDate string
+	NamespacesList          NamespacesList
+	UnsuspendedNamespace    UnsuspendedNamespace
+	ListNamespacesAndStates ListNamespacesAndStates
+	Version                 string
+	BuildDate               string
 }
 
 type NamespacesList struct {
@@ -135,14 +135,14 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 	// var nsList NamespacesList
 	for _, n := range namespaces.Items {
 		if n.Annotations[h.prefix+engine.DesiredState] == engine.Suspended {
-			p.NL.Names = append(p.NL.Names, n.Name)
+			p.NamespacesList.Names = append(p.NamespacesList.Names, n.Name)
 		}
 	}
 
-	if len(p.NL.Names) == 0 {
-		p.NL.IsEmpty = true
+	if len(p.NamespacesList.Names) == 0 {
+		p.NamespacesList.IsEmpty = true
 	} else {
-		p.NL.IsEmpty = false
+		p.NamespacesList.IsEmpty = false
 	}
 	err = tmpl.Execute(w, p)
 	if err != nil {
@@ -163,23 +163,23 @@ func (h handler) unsuspendHandler(w http.ResponseWriter, r *http.Request, l zero
 		Version:   h.version,
 		BuildDate: h.builddate,
 	}
-	p.UN = UnsuspendedNamespace{
+	p.UnsuspendedNamespace = UnsuspendedNamespace{
 		Name: r.FormValue("namespaces"),
 	}
-	if p.UN.Name == "ignore" {
-		p.UN.Success = false
-		p.UN.ErrorMsg = "you must select a namespace"
+	if p.UnsuspendedNamespace.Name == "ignore" {
+		p.UnsuspendedNamespace.Success = false
+		p.UnsuspendedNamespace.ErrorMsg = "you must select a namespace"
 	} else {
-		p.UN.Success, p.UN.Error = patchNamespace(p.UN.Name, h.prefix)
+		p.UnsuspendedNamespace.Success, p.UnsuspendedNamespace.Error = patchNamespace(p.UnsuspendedNamespace.Name, h.prefix)
 		if err != nil {
-			p.UN.ErrorMsg = p.UN.Error.Error()
+			p.UnsuspendedNamespace.ErrorMsg = p.UnsuspendedNamespace.Error.Error()
 		}
 	}
 
-	if p.UN.Success {
-		l.Info().Str("page", "/unsuspend").Msgf("unsuspended namespace %s using web ui", p.UN.Name)
+	if p.UnsuspendedNamespace.Success {
+		l.Info().Str("page", "/unsuspend").Msgf("unsuspended namespace %s using web ui", p.UnsuspendedNamespace.Name)
 	} else {
-		l.Error().Err(p.UN.Error).Str("page", "/unsuspend").Msgf("error trying to unsuspend namespace %s from web ui", p.UN.Name)
+		l.Error().Err(p.UnsuspendedNamespace.Error).Str("page", "/unsuspend").Msgf("error trying to unsuspend namespace %s from web ui", p.UnsuspendedNamespace.Name)
 	}
 	err = tmpl.Execute(w, p)
 	if err != nil {
@@ -249,13 +249,13 @@ func (h handler) listPage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 			ns := Namespace{Name: n.Name}
 			switch val {
 			case engine.Suspended:
-				ns.State = "🔴"
+				ns.State = "🔴 Suspended"
 			case engine.Running, "":
-				ns.State = "🟢"
+				ns.State = "🟢 Running"
 			default:
 				ns.State = "❔"
 			}
-			p.LNS.Namespaces = append(p.LNS.Namespaces, ns)
+			p.ListNamespacesAndStates.Namespaces = append(p.ListNamespacesAndStates.Namespaces, ns)
 		}
 	}
 	err = tmpl.Execute(w, p)
