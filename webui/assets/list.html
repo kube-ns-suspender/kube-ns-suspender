@@ -21,7 +21,7 @@
         <th style="width:60%;">Namespace</th>
         <th style="width:40%;">State</th>
       </tr>
-      {{range .LNS.Namespaces}}
+      {{range .ListNamespacesAndStates.Namespaces}}
         <tr>
           <td><code>{{.Name}}</code></td>
           <td>{{.State}}</td>
