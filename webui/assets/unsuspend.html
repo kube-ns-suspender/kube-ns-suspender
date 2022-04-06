@@ -15,9 +15,9 @@
 
 <body>
   {{if .Success}}
-    <p><b style="color: #04AA6D"><i class="fa fa-fw fa-check"></i> Success:</b> unsuspended <b>{{.UN.Name}}</b></p>
+    <p><b style="color: #04AA6D"><i class="fa fa-fw fa-check"></i> Success:</b> unsuspended <b>{{.UnsuspendedNamespace.Name}}</b></p>
   {{else}}
-    <p><b style="color: #DA190B"><i class="fa fa-fw fa-times"></i> Error:</b> {{.UN.ErrorMsg}}</p>
+    <p><b style="color: #DA190B"><i class="fa fa-fw fa-times"></i> Error:</b> {{.UnsuspendedNamespace.ErrorMsg}}</p>
   {{end}}
 
   <br>

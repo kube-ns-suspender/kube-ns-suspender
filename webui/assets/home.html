@@ -14,7 +14,7 @@
 
 <body>
   <div>
-    {{if not .NL.IsEmpty}}
+    {{if not .NamespacesList.IsEmpty}}
     <br>
     <form action="/unsuspend" method="post">
       <label for="namespaces"><b>Choose a namespace to unsuspend:</b></label>
@@ -23,7 +23,7 @@
       <div class="ns-select" style="width:200px;">
         <select name="namespaces" id="namespace">
         <option value=ignore>Select a namespace</option>
-        {{range .NL.Names}}
+        {{range .NamespacesList.Names}}
           <option value={{.}}>{{.}}</option>
         {{end}}
         </select>
