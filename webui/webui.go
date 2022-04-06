@@ -118,7 +118,7 @@ func createRouter(l zerolog.Logger, prefix, cn, v, bd string) *mux.Router {
 // homePage handles the home page, with the drop-down menu to unsuspend a namespace
 func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
 	tmpl, err := template.ParseFS(assets, "assets/home.html", "assets/templates/head.html",
-		"assets/templates/style.html", "assets/templates/footer.html")
+		"assets/templates/style.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/").Msg("cannot parse files")
 	}
@@ -154,7 +154,7 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 // namespace selected on the home page
 func (h handler) unsuspendPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
 	tmpl, err := template.ParseFS(assets, "assets/unsuspend.html", "assets/templates/head.html",
-		"assets/templates/style.html", "assets/templates/footer.html")
+		"assets/templates/style.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/unsuspend").Msg("cannot parse files")
 	}
@@ -190,7 +190,7 @@ func (h handler) unsuspendPage(w http.ResponseWriter, r *http.Request, l zerolog
 // bugPage handles the pages with contact informations in case of a bug
 func (h handler) bugPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
 	tmpl, err := template.ParseFS(assets, "assets/bug.html", "assets/templates/head.html",
-		"assets/templates/style.html", "assets/templates/footer.html")
+		"assets/templates/style.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/bug").Msg("cannot parse files")
 	}
@@ -208,7 +208,7 @@ func (h handler) bugPage(w http.ResponseWriter, r *http.Request, l zerolog.Logge
 // errorPage handles the various 404 errors that can occur
 func (h handler) errorPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
 	tmpl, err := template.ParseFS(assets, "assets/404.html", "assets/templates/head.html",
-		"assets/templates/style.html", "assets/templates/footer.html")
+		"assets/templates/style.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/bug").Msg("cannot parse templates")
 	}
@@ -228,7 +228,7 @@ func (h handler) errorPage(w http.ResponseWriter, r *http.Request, l zerolog.Log
 // state, a searchbar etc...
 func (h handler) listPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
 	tmpl, err := template.ParseFS(assets, "assets/list.html", "assets/templates/head.html",
-		"assets/templates/style.html", "assets/templates/footer.html")
+		"assets/templates/style.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/list").Msg("cannot parse files")
 	}
