@@ -4,7 +4,7 @@ GOVET=$(GOCMD) vet
 BINARY_NAME=kube-ns-suspender
 VERSION=$(shell git describe --tags)
 DOCKER_REGISTRY?=ghcr.io/govirtuo
-BUILD_DATE=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+BUILD_DATE=$(shell date +'%Y-%m-%d_%H:%M:%ST%Z')
 
 # Tooling and testing
 KIND_VERSION:=v0.11.1
