@@ -23,6 +23,7 @@ Kubernetes controller managing namespaces life cycle.
         - [Deployments and Stateful Sets](#deployments-and-stateful-sets)
         - [Cronjobs](#cronjobs)
     - [Metrics](#metrics)
+  - [WebUI screenshots](#webui-screenshots)
   - [Development flow](#development-flow)
   - [Testing](#testing)
   - [Contributing](#contributing)
@@ -129,6 +130,16 @@ Cronjobs have a `spec.suspend` value that indicates if they must be runned or no
 ### Metrics
 
 `kube-ns-suspender` comes with its own Prometheus exporter. It starts automatically and listens on `0.0.0.0:2112` by default.
+
+## WebUI screenshots
+
+<details>
+<summary>Click to see some screenshots</summary>
+
+![List namespaces](docs/images/screenshots/list_ns.png)
+
+![Unsuspend a namespace](docs/images/screenshots/unsuspend_ns.png)
+</details>
 
 ## Development flow
 
