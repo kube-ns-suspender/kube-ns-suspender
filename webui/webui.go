@@ -5,6 +5,7 @@ import (
 	"embed"
 	"html/template"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/govirtuo/kube-ns-suspender/engine"
@@ -21,16 +22,15 @@ import (
 var assets embed.FS
 
 type Page struct {
-	NamespacesList          NamespacesList
-	UnsuspendedNamespace    UnsuspendedNamespace
-	ListNamespacesAndStates ListNamespacesAndStates
-	Version                 string
-	BuildDate               string
+	NamespacesList       NamespacesList
+	UnsuspendedNamespace UnsuspendedNamespace
+	Version              string
+	BuildDate            string
 }
 
 type NamespacesList struct {
-	IsEmpty bool
-	Names   []string
+	IsEmpty    bool
+	Namespaces []Namespace
 }
 
 type UnsuspendedNamespace struct {
@@ -40,13 +40,11 @@ type UnsuspendedNamespace struct {
 	ErrorMsg string
 }
 
-type ListNamespacesAndStates struct {
-	Namespaces []Namespace
-}
-
 type Namespace struct {
-	Name  string
-	State string
+	Name             string
+	State            string
+	DailySuspendTime string
+	NextSuspendTime  string
 }
 
 type loggingHandlerFunc = func(w http.ResponseWriter, r *http.Request, l zerolog.Logger)
@@ -135,11 +133,13 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 	// var nsList NamespacesList
 	for _, n := range namespaces.Items {
 		if n.Annotations[h.prefix+engine.DesiredState] == engine.Suspended {
-			p.NamespacesList.Names = append(p.NamespacesList.Names, n.Name)
+			p.NamespacesList.Namespaces = append(p.NamespacesList.Namespaces, Namespace{
+				Name: n.Name,
+			})
 		}
 	}
 
-	if len(p.NamespacesList.Names) == 0 {
+	if len(p.NamespacesList.Namespaces) == 0 {
 		p.NamespacesList.IsEmpty = true
 	} else {
 		p.NamespacesList.IsEmpty = false
@@ -246,7 +246,11 @@ func (h handler) listPage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 	for _, n := range namespaces.Items {
 		if a, ok := n.Annotations[h.prefix+engine.ControllerName]; ok && a == h.controllerName {
 			val := n.Annotations[h.prefix+engine.DesiredState]
-			ns := Namespace{Name: n.Name}
+			ns := Namespace{
+				Name:             n.Name,
+				DailySuspendTime: "n/a",
+				NextSuspendTime:  "n/a",
+			}
 			switch val {
 			case engine.Suspended:
 				ns.State = "🔴 Suspended"
@@ -255,7 +259,28 @@ func (h handler) listPage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 			default:
 				ns.State = "❔"
 			}
-			p.ListNamespacesAndStates.Namespaces = append(p.ListNamespacesAndStates.Namespaces, ns)
+
+			// add dailySuspendTime if it exists
+			if dst, ok := n.Annotations[h.prefix+engine.DailySuspendTime]; ok {
+				dstTime, err := time.Parse(time.Kitchen, dst)
+				if err != nil {
+					l.Error().Err(err).Str("page", "/list").Str("namespace", n.Name).Msgf("cannot parse %s", engine.DailySuspendTime)
+				} else {
+					ns.DailySuspendTime = dstTime.Format(time.Kitchen)
+				}
+			}
+
+			// add nextSuspendTime if it exists
+			if nst, ok := n.Annotations[h.prefix+engine.NextSuspendTime]; ok {
+				nstTime, err := time.Parse(time.RFC822Z, nst)
+				if err != nil {
+					l.Error().Err(err).Str("page", "/list").Str("namespace", n.Name).Msgf("cannot parse %s", engine.NextSuspendTime)
+				} else {
+					ns.NextSuspendTime = nstTime.Format(time.RFC822)
+				}
+			}
+
+			p.NamespacesList.Namespaces = append(p.NamespacesList.Namespaces, ns)
 		}
 	}
 	err = tmpl.Execute(w, p)

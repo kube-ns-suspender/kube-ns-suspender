@@ -23,8 +23,8 @@
       <div class="ns-select" style="width:200px;">
         <select name="namespaces" id="namespace">
         <option value=ignore>Select a namespace</option>
-        {{range .NamespacesList.Names}}
-          <option value={{.}}>{{.}}</option>
+        {{range .NamespacesList.Namespaces}}
+          <option value={{.Name}}>{{.Name}}</option>
         {{end}}
         </select>
       </div>
