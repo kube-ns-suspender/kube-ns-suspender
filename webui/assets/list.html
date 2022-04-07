@@ -23,7 +23,7 @@
         <th>Daily Suspend Time</th>
         <th>Next Suspend Time</th>
       </tr>
-      {{range .ListNamespacesAndStates.Namespaces}}
+      {{range .NamespacesList.Namespaces}}
         <tr>
           <td><code>{{.Name}}</code></td>
           <td>{{.State}}</td>

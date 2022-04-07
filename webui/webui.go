@@ -22,11 +22,10 @@ import (
 var assets embed.FS
 
 type Page struct {
-	NamespacesList          NamespacesList
-	UnsuspendedNamespace    UnsuspendedNamespace
-	ListNamespacesAndStates ListNamespacesAndStates
-	Version                 string
-	BuildDate               string
+	NamespacesList       NamespacesList
+	UnsuspendedNamespace UnsuspendedNamespace
+	Version              string
+	BuildDate            string
 }
 
 type NamespacesList struct {
@@ -39,11 +38,6 @@ type UnsuspendedNamespace struct {
 	Name     string
 	Error    error
 	ErrorMsg string
-}
-
-// todo: duplica of NamespaceList, should be removed
-type ListNamespacesAndStates struct {
-	Namespaces []Namespace
 }
 
 type Namespace struct {
@@ -286,7 +280,7 @@ func (h handler) listPage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 				}
 			}
 
-			p.ListNamespacesAndStates.Namespaces = append(p.ListNamespacesAndStates.Namespaces, ns)
+			p.NamespacesList.Namespaces = append(p.NamespacesList.Namespaces, ns)
 		}
 	}
 	err = tmpl.Execute(w, p)
