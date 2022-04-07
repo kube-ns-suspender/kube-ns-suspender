@@ -20,7 +20,7 @@ const (
 // annotations constants
 const (
 	// annotations used on namespaces
-	nextSuspendTime = "nextSuspendTime"
+	NextSuspendTime = "nextSuspendTime"
 	ControllerName  = "controllerName"
 
 	// those ones need to be exported as they are used
@@ -33,13 +33,12 @@ const (
 )
 
 type Engine struct {
-	Logger                zerolog.Logger
-	Mutex                 sync.Mutex
-	Wl                    chan v1.Namespace
-	MetricsServ           metrics.Server
-	RunningNamespacesList map[string]time.Time
-	RunningDuration       time.Duration
-	Options               Options
+	Logger          zerolog.Logger
+	Mutex           sync.Mutex
+	Wl              chan v1.Namespace
+	MetricsServ     metrics.Server
+	RunningDuration time.Duration
+	Options         Options
 }
 
 type Options struct {

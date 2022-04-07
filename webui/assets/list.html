@@ -18,19 +18,23 @@
 
     <table id="namespacesTable">
       <tr class="header">
-        <th style="width:60%;">Namespace</th>
-        <th style="width:40%;">State</th>
+        <th>Namespace</th>
+        <th>State</th>
+        <th>Daily Suspend Time</th>
+        <th>Next Suspend Time</th>
       </tr>
       {{range .ListNamespacesAndStates.Namespaces}}
         <tr>
           <td><code>{{.Name}}</code></td>
           <td>{{.State}}</td>
+          <td>{{.DailySuspendTime}}</td>
+          <td>{{.NextSuspendTime}}</td>
         </tr>
       {{end}}
     </table>
       </table>
       <br>
-      <button class="button" onclick="window.location.reload();"><i class="fa fa-refresh" aria-hidden="true"></i> Refresh page</button>
+      <button class="button" onclick="window.location.reload();"><i class="fa fa-refresh" aria-hidden="true"></i> Refresh list</button>
 </body>
 
 <script>
