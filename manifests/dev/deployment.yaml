@@ -23,3 +23,5 @@ spec:
         ports:
         - name: webui
           containerPort: 8080
+        - name: pprof
+          containerPort: 4455

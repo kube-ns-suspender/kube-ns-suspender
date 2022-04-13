@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-ns-suspender-pprof
+spec:
+  selector:
+    app: kube-ns-suspender
+  ports:
+    - protocol: TCP
+      port: 4455
+      targetPort: pprof

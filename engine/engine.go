@@ -49,6 +49,8 @@ type Options struct {
 	Prefix, ControllerName    string
 	NoKubeWarnings, HumanLogs bool
 	EmbeddedUI, WebUIOnly     bool
+	PProf                     bool
+	PProfAddr                 string
 }
 
 // New returns a new engine instance

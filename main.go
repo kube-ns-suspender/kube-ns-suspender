@@ -9,6 +9,7 @@ import (
 
 	"github.com/govirtuo/kube-ns-suspender/engine"
 	"github.com/govirtuo/kube-ns-suspender/metrics"
+	"github.com/govirtuo/kube-ns-suspender/pprof"
 	"github.com/govirtuo/kube-ns-suspender/webui"
 	"github.com/rs/zerolog/log"
 	"k8s.io/client-go/kubernetes"
@@ -39,6 +40,8 @@ func main() {
 	fs.BoolVar(&opt.HumanLogs, "human", false, "Disable JSON logging")
 	fs.BoolVar(&opt.EmbeddedUI, "ui-embedded", false, "Start UI in background")
 	fs.BoolVar(&opt.WebUIOnly, "ui-only", false, "Start UI only")
+	fs.BoolVar(&opt.PProf, "pprof", false, "Start pprof server")
+	fs.StringVar(&opt.PProfAddr, "pprof-addr", ":4455", "Address and port to use with pprof")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}
@@ -57,6 +60,15 @@ func main() {
 	}
 	eng.Logger.Info().Msgf("engine successfully created in %s", time.Since(start))
 	eng.Logger.Info().Msgf("kube-ns-suspender version '%s' (built %s)", Version, BuildDate)
+
+	if eng.Options.PProf {
+		s, err := pprof.New(eng.Options.PProfAddr)
+		if err != nil {
+			eng.Logger.Fatal().Err(err).Msg("cannot start pprof")
+		}
+		eng.Logger.Info().Msgf("starting pprof on %s", eng.Options.PProfAddr)
+		go s.Run()
+	}
 
 	// start web ui
 	if eng.Options.EmbeddedUI || eng.Options.WebUIOnly {

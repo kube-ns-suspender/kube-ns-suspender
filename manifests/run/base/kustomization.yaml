@@ -6,7 +6,8 @@ namespace: kube-ns-suspender
 resources:
   - deployment.yaml
   - rbac.yaml
-  - service.yaml
+  - service-metrics.yaml
+  - service-pprof.yaml
   - service-ui.yaml
   - serviceMonitor.yaml
   - ingress.yaml
