@@ -132,7 +132,7 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 	}
 	// var nsList NamespacesList
 	for _, n := range namespaces.Items {
-		if n.Annotations[h.prefix+engine.DesiredState] == engine.Suspended {
+		if n.Annotations[h.prefix+engine.DesiredState] == engine.Suspended && n.Annotations[h.prefix+engine.ControllerName] == h.controllerName {
 			p.NamespacesList.Namespaces = append(p.NamespacesList.Namespaces, Namespace{
 				Name: n.Name,
 			})
