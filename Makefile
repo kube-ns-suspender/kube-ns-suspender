@@ -115,6 +115,8 @@ kind-start: ## Start a local Kubernetes cluster
 		--kubeconfig=${KUBE_CONFIG}\
 		--config=./tests/config/kind-config.yaml
 
+kind-stop: e2e_cleanup ## Stop and clean local kind cluster
+
 kind-load: ## Load localy built docker image into Kind cluster
 	@echo '${GREEN}---> Loading local image into Kind cluster${RESET}'
 	kind load docker-image ${DOCKER_REGISTRY}/${BINARY_NAME}:latest --name=kns-test
