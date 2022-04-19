@@ -25,7 +25,12 @@ dev:
   sync:
   - imageSelector: ${IMAGE} # Select the Pod that runs our `${IMAGE}`
     excludePaths:
+    - .devcontainer/
     - .git/
+    - .github/
+    - docs/
+    - tmp/
+    - tools/
 
   # `dev.terminal` tells DevSpace to open a terminal as a last step during `devspace dev`
   terminal:
@@ -58,14 +63,3 @@ dev:
     - op: remove
       path: spec.containers[0].securityContext
 
-# `profiles` lets you modify the config above for different environments (e.g. dev vs production)
-profiles:
-  # This profile is called `production` and you can use it for example using: devspace deploy -p production
-  # We generally recommend to use the base config without any profiles as optimized for development (e.g. image build+push is disabled)
-- name: production
-# This profile adds our image to the config so that DevSpace will build, tag and push our image before the deployment
-  merge:
-    images:
-      app:
-        image: ${IMAGE} # Use the value of our `${IMAGE}` variable here (see vars above)
-        dockerfile: ./Dockerfile
