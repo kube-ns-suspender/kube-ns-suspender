@@ -56,7 +56,7 @@ e2e: docker-build docker-build-tools e2e_cleanup ## Run End2End tests on a kuber
 		--config=./tests/config/kind-config.yaml
 
 	@echo '${GREEN}---> Loading local image into Kind cluster${RESET}'
-	kind load docker-image ghcr.io/govirtuo/kube-ns-suspender:latest --name=kns-test
+	kind load docker-image ${DOCKER_REGISTRY}/${BINARY_NAME}:latest --name=kns-test
 
 	@echo '${GREEN}---> Run tests${RESET}'
 	docker run --rm -it \
@@ -98,13 +98,26 @@ docker-release: ## Release the container with tag latest and version
 docker-build-tools: ## Use the Dockerfile to build the tools container
 	docker build -f tools/Dockerfile.bats -t local/$(BINARY_NAME)-bats tools/
 
-dl-kind: ## Donwload Kind (Kubernetes-in-Docker) for local testing
+kind-dl: ## Donwload Kind (Kubernetes-in-Docker) for local testing
 	$(eval OS := "$(shell uname -s | tr [:upper:] [:lower:])")
 	@echo '${GREEN}Downloading Kind ${KIND_VERSION}:${RESET}'
 	curl --progress -Lo tools/bin/kind https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-${OS}-amd64
 	chmod +x tools/bin/kind
 	@echo '${YELLOW}Run this command before running e2e tests:${RESET}'
 	@echo 'export PATH="$${PWD}/tools/bin:$${PATH}"'
+
+kind-start: ## Start a local Kubernetes cluster
+	$(eval TMP_DIR := $(shell mktemp -d))
+	$(eval KUBE_CONFIG := "${TMP_DIR}/kube.config")
+
+	@echo '${GREEN}---> Create Kind cluster${RESET}'
+	kind create cluster \
+		--kubeconfig=${KUBE_CONFIG}\
+		--config=./tests/config/kind-config.yaml
+
+kind-load: ## Load localy built docker image into Kind cluster
+	@echo '${GREEN}---> Loading local image into Kind cluster${RESET}'
+	kind load docker-image ${DOCKER_REGISTRY}/${BINARY_NAME}:latest --name=kns-test
 
 ## Help:
 help: ## Show this help

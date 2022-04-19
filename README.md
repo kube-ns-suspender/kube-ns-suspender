@@ -151,6 +151,11 @@ Cronjobs have a `spec.suspend` value that indicates if they must be runned or no
 
 To test the modifications in real-time, this project uses [`devspace`](https://devspace.sh/). It is configured to use the manifests in `manifests/dev/`.
 
+> :check_mark:
+>
+> * You can start a local Kubernetes cluster with the command: `make kind-start`
+> * Then run in your shell `export KUBE_CONFIG=` the value reported :point_up:
+
 First, set the namespace to use:
 
 ```
