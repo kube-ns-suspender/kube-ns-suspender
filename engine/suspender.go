@@ -357,7 +357,17 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 
 			// now we can check if patchedResourcesCounter is > 0 and add nextSuspendTime depending of the result
 			if patchedResourcesCounter > 0 {
-				sLogger.Debug().Str("step", stepName).Msgf("namespace has been unsuspended manually, adding the annotation '%s' to it (engined configured duration: '%s')", eng.Options.Prefix+NextSuspendTime, eng.RunningDuration)
+				sLogger.Debug().Str("step", stepName).Msg("namespace has been unsuspended manually")
+
+				sLogger.Debug().Str("step", stepName).Msgf("checking annotation '%s'", eng.Options.Prefix+NextSuspendTime)
+				if val, ok := n.Annotations[eng.Options.Prefix+NextSuspendTime]; ok {
+					sLogger.Info().Str("step", stepName).Msgf("found annotation '%s'='%s', not updating it", eng.Options.Prefix+NextSuspendTime, val)
+					sLogger.Debug().Str("step", stepName).Msgf("suspender loop ended, duration: %s", time.Since(start))
+					continue
+				}
+
+				sLogger.Info().Msgf("'%s' annotation not found on namespace", eng.Options.Prefix+NextSuspendTime)
+				sLogger.Info().Msgf("adding the annotation '%s' to namespace (engine configured duration: '%s'", eng.Options.Prefix+NextSuspendTime, eng.RunningDuration)
 				if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 					sLogger.Trace().Str("step", stepName).Msg("get namespace")
 					res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
