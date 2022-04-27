@@ -3,6 +3,7 @@ package webui
 import (
 	"context"
 	"embed"
+	"fmt"
 	"html/template"
 	"net/http"
 	"time"
@@ -132,6 +133,10 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 	}
 	// var nsList NamespacesList
 	for _, n := range namespaces.Items {
+		phase := fmt.Sprint(n.Status.Phase)
+		if phase == "Terminating" {
+			continue
+		}
 		if n.Annotations[h.prefix+engine.ControllerName] == h.controllerName && n.Annotations[h.prefix+engine.DesiredState] == engine.Suspended {
 			p.NamespacesList.Namespaces = append(p.NamespacesList.Namespaces, Namespace{
 				Name: n.Name,
@@ -244,6 +249,10 @@ func (h handler) listPage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 	}
 	// var nsList ListNamespacesAndStates
 	for _, n := range namespaces.Items {
+		phase := fmt.Sprint(n.Status.Phase)
+		if phase == "Terminating" {
+			continue
+		}
 		if a, ok := n.Annotations[h.prefix+engine.ControllerName]; ok && a == h.controllerName {
 			val := n.Annotations[h.prefix+engine.DesiredState]
 			ns := Namespace{
