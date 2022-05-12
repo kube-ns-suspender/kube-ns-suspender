@@ -102,9 +102,11 @@ Valid values are any values that match the [`time.Kitchen`](https://pkg.go.dev/t
 
 ##### **desiredState**
  
-If you want to unsuspend a namespace, you have to manually edit the annotation of the namespace:
+If you want to unsuspend a namespace, you have to edit the annotation of the namespace:
 
 `kube-ns-suspender/desiredState: Suspended` -> `kube-ns-suspender/desiredState: Running`.
+
+To do this, you can either use the webui, do it manually with `kubectl edit` or use the dedicated [`kubectl` plugin](https://github.com/govirtuo/kubectl-suspender).
 
 ##### **nextSuspendTime**
 
