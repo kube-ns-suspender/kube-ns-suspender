@@ -6,6 +6,7 @@ Kubernetes controller managing namespaces life cycle.
 
 - [kube-ns-suspender](#kube-ns-suspender)
   - [Goal](#goal)
+  - [Installation](#installation)
   - [Usage](#usage)
     - [Internals](#internals)
       - [The watcher](#the-watcher)
@@ -23,6 +24,7 @@ Kubernetes controller managing namespaces life cycle.
         - [Deployments and Stateful Sets](#deployments-and-stateful-sets)
         - [Cronjobs](#cronjobs)
     - [Metrics](#metrics)
+    - [Profiling](#profiling)
   - [WebUI screenshots](#webui-screenshots)
   - [Development flow](#development-flow)
   - [Testing](#testing)
@@ -33,6 +35,23 @@ Kubernetes controller managing namespaces life cycle.
 
 This controller watches the cluster's namespaces and "suspends" them by scaling to 0 some of the resources within those namespaces at a given time.
 However, once a namespace is in a "suspended" state, it will not be restarted automatically the following day (or whatever). This allows to "reactivate" namespaces only when required, and reduce costs.
+
+## Installation
+
+To deploy `kube-ns-suspender`, run the following commands:
+
+```
+kubectl create ns kube-ns-suspender && \
+kubectl apply -f manifests/run/base/
+```
+
+This will apply all the required resources.
+
+> :memo:
+> 
+> The latest version of `kube-ns-suspender` will be deployed as the image tag used is `:latest`.
+
+A namespace `kube-ns-suspender` will be created and the manifests will be deployed within.
 
 ## Usage
 
