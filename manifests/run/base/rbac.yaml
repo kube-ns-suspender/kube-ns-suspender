@@ -46,3 +46,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: kube-ns-suspender
+  namespace: kube-ns-suspender
