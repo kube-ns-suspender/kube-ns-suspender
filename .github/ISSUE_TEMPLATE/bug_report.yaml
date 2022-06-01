@@ -33,7 +33,7 @@ body:
       description: Please copy and paste any relevant log output. This will be automatically formatted into code, so no need for backticks.
       render: bash
   - type: textarea
-    id: logs
+    id: other-things
     attributes:
       label: Anything else?
       description: Links? References? Please add anything that will give us more context about the issue that you are encountering!
