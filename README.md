@@ -160,6 +160,10 @@ Cronjobs have a `spec.suspend` value that indicates if they must be runned or no
 
 ## WebUI screenshots
 
+> :memo
+>
+> The webUI is **disabled** by default.
+
 <details>
 <summary>Click to see some screenshots</summary>
 
