@@ -51,6 +51,8 @@ type Options struct {
 	EmbeddedUI, WebUIOnly     bool
 	PProf                     bool
 	PProfAddr                 string
+	SlackChannelName          string
+	SlackChannelLink          string
 }
 
 // New returns a new engine instance

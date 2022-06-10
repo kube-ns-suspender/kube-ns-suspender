@@ -12,7 +12,6 @@ import (
 	"github.com/govirtuo/kube-ns-suspender/engine"
 	"github.com/rs/zerolog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/retry"
@@ -23,10 +22,14 @@ import (
 var assets embed.FS
 
 type Page struct {
-	NamespacesList       NamespacesList
-	UnsuspendedNamespace UnsuspendedNamespace
-	Version              string
-	BuildDate            string
+	Error, HasMessage bool
+	ErrMsg, Message   string
+	NamespacesList    NamespacesList
+	CurrentNamespace  Namespace
+	Version           string
+	BuildDate         string
+	SlackChannelName  string
+	SlackChannelLink  string
 }
 
 type NamespacesList struct {
@@ -35,10 +38,7 @@ type NamespacesList struct {
 }
 
 type UnsuspendedNamespace struct {
-	Success  bool
-	Name     string
-	Error    error
-	ErrorMsg string
+	Name string
 }
 
 type Namespace struct {
@@ -61,12 +61,14 @@ type handler struct {
 	prefix             string
 	controllerName     string
 	version, builddate string
+	slackChannelName   string
+	slackChannelLink   string
 }
 
 var cs *kubernetes.Clientset
 
 // Start starts the webui HTTP server
-func Start(l zerolog.Logger, port, prefix, cn, v, bd string) error {
+func Start(l zerolog.Logger, port, prefix, cn, v, bd, slackname, slacklink string) error {
 	// create the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -81,7 +83,7 @@ func Start(l zerolog.Logger, port, prefix, cn, v, bd string) error {
 
 	srv := http.Server{
 		Addr:    ":" + port,
-		Handler: createRouter(l, prefix, cn, v, bd),
+		Handler: createRouter(l, prefix, cn, v, bd, slackname, slacklink),
 	}
 	if err := srv.ListenAndServe(); err != nil {
 		return err
@@ -91,75 +93,43 @@ func Start(l zerolog.Logger, port, prefix, cn, v, bd string) error {
 
 // createRouter creates the router with all the HTTP routes.
 // It also passes different common values to the handlers
-func createRouter(l zerolog.Logger, prefix, cn, v, bd string) *mux.Router {
+func createRouter(l zerolog.Logger, prefix, cn, v, bd, slackname, slacklink string) *mux.Router {
 	r := mux.NewRouter()
 
 	if v == "" {
 		v = "n/a"
 	}
+
+	// add a # in front of the slack channel if not present. This is purely
+	// for esthetics
+	if slackname != "" && slackname[0] != '#' {
+		slackname = "#" + slackname
+	}
+
 	h := handler{
-		prefix:         prefix,
-		controllerName: cn,
-		version:        v,
-		builddate:      bd,
+		prefix:           prefix,
+		controllerName:   cn,
+		version:          v,
+		builddate:        bd,
+		slackChannelName: slackname,
+		slackChannelLink: slacklink,
 	}
 
 	withLogger := loggingHandlerFactory(l)
 	r.Handle("/", withLogger(h.homePage)).Methods(http.MethodGet)
-	r.Handle("/unsuspend", withLogger(h.unsuspendPage)).Methods(http.MethodPost)
+	r.Handle("/suspend", withLogger(h.suspendPage)).Methods(http.MethodGet)
+	r.Handle("/unsuspend", withLogger(h.unsuspendPage)).Methods(http.MethodGet)
 	r.Handle("/bug", withLogger(h.bugPage)).Methods(http.MethodGet)
-	r.Handle("/list", withLogger(h.listPage)).Methods(http.MethodGet)
 	r.NotFoundHandler = withLogger(h.errorPage)
 
 	return r
 }
 
-// homePage handles the home page, with the drop-down menu to unsuspend a namespace
-func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
-	tmpl, err := template.ParseFS(assets, "assets/home.html", "assets/templates/head.html",
-		"assets/templates/style.html")
-	if err != nil {
-		l.Error().Err(err).Str("page", "/").Msg("cannot parse files")
-	}
-
-	namespaces, err := cs.CoreV1().Namespaces().List(context.TODO(), v1.ListOptions{})
-	if err != nil {
-		l.Error().Err(err).Str("page", "/").Msg("cannot list namespaces")
-	}
-
-	p := Page{
-		Version:   h.version,
-		BuildDate: h.builddate,
-	}
-	// var nsList NamespacesList
-	for _, n := range namespaces.Items {
-		phase := fmt.Sprint(n.Status.Phase)
-		if phase == "Terminating" {
-			continue
-		}
-		if n.Annotations[h.prefix+engine.ControllerName] == h.controllerName && n.Annotations[h.prefix+engine.DesiredState] == engine.Suspended {
-			p.NamespacesList.Namespaces = append(p.NamespacesList.Namespaces, Namespace{
-				Name: n.Name,
-			})
-		}
-	}
-
-	if len(p.NamespacesList.Namespaces) == 0 {
-		p.NamespacesList.IsEmpty = true
-	} else {
-		p.NamespacesList.IsEmpty = false
-	}
-	err = tmpl.Execute(w, p)
-	if err != nil {
-		l.Error().Err(err).Str("page", "/").Msg("cannot execute template")
-	}
-}
-
 // unsuspendPage handlers the POST requests done by users to unsuspend a given
 // namespace selected on the home page
 func (h handler) unsuspendPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
-	tmpl, err := template.ParseFS(assets, "assets/unsuspend.html", "assets/templates/head.html",
-		"assets/templates/style.html")
+	tmpl, err := template.ParseFS(assets, "assets/unsuspend.html", "assets/_head.html",
+		"assets/_style.html", "assets/_navbar.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/unsuspend").Msg("cannot parse files")
 	}
@@ -168,41 +138,114 @@ func (h handler) unsuspendPage(w http.ResponseWriter, r *http.Request, l zerolog
 		Version:   h.version,
 		BuildDate: h.builddate,
 	}
-	p.UnsuspendedNamespace = UnsuspendedNamespace{
-		Name: r.FormValue("namespaces"),
+
+	vals, ok := r.URL.Query()["name"]
+	if !ok || len(vals[0]) < 1 {
+		p.Error = true
+		p.ErrMsg = "One 'name' parameter is accepted."
+		if err := tmpl.Execute(w, p); err != nil {
+			l.Error().Err(err).Str("page", "/unsuspend").Msg("cannot execute template")
+		}
+		return
 	}
-	if p.UnsuspendedNamespace.Name == "ignore" {
-		p.UnsuspendedNamespace.Success = false
-		p.UnsuspendedNamespace.ErrorMsg = "you must select a namespace"
+
+	p.CurrentNamespace = Namespace{
+		Name: vals[0],
+	}
+	if p.CurrentNamespace.Name == "ignore" {
+		p.Error = false
+		p.ErrMsg = "you must select a namespace"
 	} else {
-		p.UnsuspendedNamespace.Success, p.UnsuspendedNamespace.Error = patchNamespace(p.UnsuspendedNamespace.Name, h.prefix)
+		err := patchNamespace(p.CurrentNamespace.Name, h.prefix, engine.Running)
 		if err != nil {
-			p.UnsuspendedNamespace.ErrorMsg = p.UnsuspendedNamespace.Error.Error()
+			p.Error = true
+			p.ErrMsg = err.Error()
+			err = tmpl.Execute(w, p)
+			if err != nil {
+				l.Error().Err(err).Str("page", "/unsuspend").Msg("cannot execute template")
+			}
+			return
 		}
 	}
 
-	if p.UnsuspendedNamespace.Success {
-		l.Info().Str("page", "/unsuspend").Msgf("unsuspended namespace %s using web ui", p.UnsuspendedNamespace.Name)
-	} else {
-		l.Error().Err(p.UnsuspendedNamespace.Error).Str("page", "/unsuspend").Msgf("error trying to unsuspend namespace %s from web ui", p.UnsuspendedNamespace.Name)
-	}
+	p.HasMessage = true
+	p.Message = fmt.Sprintf("Namespace %s successfully unsuspended.", p.CurrentNamespace.Name)
+	l.Info().Str("page", "/unsuspend").Msgf("unsuspended namespace %s using web ui", p.CurrentNamespace.Name)
 	err = tmpl.Execute(w, p)
 	if err != nil {
 		l.Error().Err(err).Str("page", "/unsuspend").Msg("cannot execute template")
 	}
 }
 
+func (h handler) suspendPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
+	p := Page{
+		Version:   h.version,
+		BuildDate: h.builddate,
+	}
+
+	tmpl, err := template.ParseFS(assets, "assets/suspend.html", "assets/_head.html",
+		"assets/_style.html", "assets/_navbar.html")
+	if err != nil {
+		l.Error().Err(err).Str("page", "/suspend").Msg("cannot parse files")
+		p.Error = true
+		p.ErrMsg = "Cannot parse template files: " + err.Error()
+		if err := tmpl.Execute(w, p); err != nil {
+			l.Error().Err(err).Str("page", "/suspend").Msg("cannot execute template")
+		}
+		return
+	}
+
+	vals, ok := r.URL.Query()["name"]
+	if !ok || len(vals[0]) < 1 {
+		p.Error = true
+		p.ErrMsg = "One 'name' parameter is accepted."
+		if err := tmpl.Execute(w, p); err != nil {
+			l.Error().Err(err).Str("page", "/suspend").Msg("cannot execute template")
+		}
+		return
+	}
+
+	p.CurrentNamespace = Namespace{
+		Name: vals[0],
+	}
+	if p.CurrentNamespace.Name == "ignore" {
+		p.Error = false
+		p.ErrMsg = "you must select a namespace"
+	} else {
+		err := patchNamespace(p.CurrentNamespace.Name, h.prefix, engine.Suspended)
+		if err != nil {
+			p.Error = true
+			p.ErrMsg = err.Error()
+			err = tmpl.Execute(w, p)
+			if err != nil {
+				l.Error().Err(err).Str("page", "/suspended").Msg("cannot execute template")
+			}
+			return
+		}
+	}
+
+	p.HasMessage = true
+	p.Message = fmt.Sprintf("Namespace %s successfully suspended.", p.CurrentNamespace.Name)
+	l.Info().Str("page", "/suspended").Msgf("suspendeded namespace %s using web ui", p.CurrentNamespace.Name)
+	err = tmpl.Execute(w, p)
+	if err != nil {
+		l.Error().Err(err).Str("page", "/suspended").Msg("cannot execute template")
+	}
+}
+
 // bugPage handles the pages with contact informations in case of a bug
 func (h handler) bugPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
-	tmpl, err := template.ParseFS(assets, "assets/bug.html", "assets/templates/head.html",
-		"assets/templates/style.html")
+	tmpl, err := template.ParseFS(assets, "assets/bug.html", "assets/_head.html",
+		"assets/_style.html", "assets/_navbar.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/bug").Msg("cannot parse files")
 	}
 
 	p := Page{
-		Version:   h.version,
-		BuildDate: h.builddate,
+		Version:          h.version,
+		BuildDate:        h.builddate,
+		SlackChannelName: h.slackChannelName,
+		SlackChannelLink: h.slackChannelLink,
 	}
 	err = tmpl.Execute(w, p)
 	if err != nil {
@@ -212,8 +255,8 @@ func (h handler) bugPage(w http.ResponseWriter, r *http.Request, l zerolog.Logge
 
 // errorPage handles the various 404 errors that can occur
 func (h handler) errorPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
-	tmpl, err := template.ParseFS(assets, "assets/404.html", "assets/templates/head.html",
-		"assets/templates/style.html")
+	tmpl, err := template.ParseFS(assets, "assets/404.html", "assets/_head.html",
+		"assets/_style.html", "assets/_navbar.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/bug").Msg("cannot parse templates")
 	}
@@ -229,18 +272,18 @@ func (h handler) errorPage(w http.ResponseWriter, r *http.Request, l zerolog.Log
 	}
 }
 
-// listPage handles the /list route that contains the list of namespaces, their
+// homePage handles the / route that contains the list of namespaces, their
 // state, a searchbar etc...
-func (h handler) listPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
-	tmpl, err := template.ParseFS(assets, "assets/list.html", "assets/templates/head.html",
-		"assets/templates/style.html")
+func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
+	tmpl, err := template.ParseFS(assets, "assets/home.html", "assets/_head.html",
+		"assets/_style.html", "assets/_navbar.html")
 	if err != nil {
-		l.Error().Err(err).Str("page", "/list").Msg("cannot parse files")
+		l.Error().Err(err).Str("page", "/").Msg("cannot parse files")
 	}
 
-	namespaces, err := cs.CoreV1().Namespaces().List(context.TODO(), v1.ListOptions{})
+	namespaces, err := cs.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		l.Error().Err(err).Str("page", "/list").Msg("cannot list namespaces")
+		l.Error().Err(err).Str("page", "/").Msg("cannot list namespaces")
 	}
 
 	p := Page{
@@ -259,21 +302,14 @@ func (h handler) listPage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 				Name:             n.Name,
 				DailySuspendTime: "n/a",
 				NextSuspendTime:  "n/a",
-			}
-			switch val {
-			case engine.Suspended:
-				ns.State = "🔴 Suspended"
-			case engine.Running, "":
-				ns.State = "🟢 Running"
-			default:
-				ns.State = "❔"
+				State:            val,
 			}
 
 			// add dailySuspendTime if it exists
 			if dst, ok := n.Annotations[h.prefix+engine.DailySuspendTime]; ok {
 				dstTime, err := time.Parse(time.Kitchen, dst)
 				if err != nil {
-					l.Error().Err(err).Str("page", "/list").Str("namespace", n.Name).Msgf("cannot parse %s", engine.DailySuspendTime)
+					l.Error().Err(err).Str("page", "/").Str("namespace", n.Name).Msgf("cannot parse %s", engine.DailySuspendTime)
 				} else {
 					ns.DailySuspendTime = dstTime.Format(time.Kitchen)
 				}
@@ -283,7 +319,7 @@ func (h handler) listPage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 			if nst, ok := n.Annotations[h.prefix+engine.NextSuspendTime]; ok {
 				nstTime, err := time.Parse(time.RFC822Z, nst)
 				if err != nil {
-					l.Error().Err(err).Str("page", "/list").Str("namespace", n.Name).Msgf("cannot parse %s", engine.NextSuspendTime)
+					l.Error().Err(err).Str("page", "/").Str("namespace", n.Name).Msgf("cannot parse %s", engine.NextSuspendTime)
 				} else {
 					ns.NextSuspendTime = nstTime.Format(time.RFC822)
 				}
@@ -294,26 +330,26 @@ func (h handler) listPage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 	}
 	err = tmpl.Execute(w, p)
 	if err != nil {
-		l.Error().Err(err).Str("page", "/list").Msg("cannot execute template")
+		l.Error().Err(err).Str("page", "/").Msg("cannot execute template")
 	}
 }
 
-func patchNamespace(name, prefix string) (bool, error) {
+func patchNamespace(name, prefix, state string) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, err := cs.CoreV1().Namespaces().Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
-		result.Annotations[prefix+engine.DesiredState] = engine.Running
+		result.Annotations[prefix+engine.DesiredState] = state
 		var updateOpts metav1.UpdateOptions
 		_, err = cs.CoreV1().Namespaces().Update(context.TODO(), result, updateOpts)
 		return err
 	})
 
 	if err != nil {
-		return false, err
+		return err
 	}
-	return true, nil
+	return nil
 }
 
 func (lh *loggingHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
