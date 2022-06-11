@@ -128,7 +128,7 @@ func createRouter(l zerolog.Logger, prefix, cn, v, bd, slackname, slacklink stri
 // unsuspendPage handlers the POST requests done by users to unsuspend a given
 // namespace selected on the home page
 func (h handler) unsuspendPage(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
-	tmpl, err := template.ParseFS(assets, "assets/unsuspend.html", "assets/_head.html",
+	tmpl, err := template.ParseFS(assets, "assets/action.html", "assets/_head.html",
 		"assets/_style.html", "assets/_navbar.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/unsuspend").Msg("cannot parse files")
@@ -183,7 +183,7 @@ func (h handler) suspendPage(w http.ResponseWriter, r *http.Request, l zerolog.L
 		BuildDate: h.builddate,
 	}
 
-	tmpl, err := template.ParseFS(assets, "assets/suspend.html", "assets/_head.html",
+	tmpl, err := template.ParseFS(assets, "assets/action.html", "assets/_head.html",
 		"assets/_style.html", "assets/_navbar.html")
 	if err != nil {
 		l.Error().Err(err).Str("page", "/suspend").Msg("cannot parse files")
