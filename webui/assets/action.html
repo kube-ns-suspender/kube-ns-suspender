@@ -1,0 +1,36 @@
+<!doctype html>
+
+{{ template "_head.html" }}
+{{ template "_style.html" }}
+{{ template "_navbar.html" }}
+
+<body>
+  {{if .Error}}
+  <div class="container mt-5">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <strong>Error!</strong> {{.ErrMsg}}
+    </div>
+  </div>
+  {{end}}
+
+  {{if .HasMessage}}
+  <div class="container mt-5">
+    <div class="container mt-5">
+      <div class="alert alert-info alert-dismissible fade show" role="alert">
+        {{.Message}}
+      </div>
+    </div>
+  </div>
+  {{end}}
+
+  <div class="container mt-5">
+    <h3><a href="/">Go back to home page</a></h3>
+  </div>
+  <div class="footer">
+    <div class="container">
+      <p style="text-align: center;">
+          Developed by <a href="https://www.govirtuo.com">Virtuo Technologies</a>, delivered under MIT license. Version: '{{.Version}}' (built: {{.BuildDate}}).
+      </p>
+    </div>
+  </div>
+</body>

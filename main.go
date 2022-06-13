@@ -42,6 +42,8 @@ func main() {
 	fs.BoolVar(&opt.WebUIOnly, "ui-only", false, "Start UI only")
 	fs.BoolVar(&opt.PProf, "pprof", false, "Start pprof server")
 	fs.StringVar(&opt.PProfAddr, "pprof-addr", ":4455", "Address and port to use with pprof")
+	fs.StringVar(&opt.SlackChannelName, "slack-channel-name", "", "Name of the help Slack channel in the UI bug page")
+	fs.StringVar(&opt.SlackChannelLink, "slack-channel-link", "", "Link of the helm Slack channel in the UI bug page")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}
@@ -74,7 +76,8 @@ func main() {
 	if eng.Options.EmbeddedUI || eng.Options.WebUIOnly {
 		go func() {
 			uiLogger := eng.Logger.With().Str("routine", "webui").Logger()
-			if err := webui.Start(uiLogger, "8080", eng.Options.Prefix, eng.Options.ControllerName, Version, BuildDate); err != nil {
+			if err := webui.Start(uiLogger, "8080",
+				eng.Options.Prefix, eng.Options.ControllerName, Version, BuildDate, opt.SlackChannelName, opt.SlackChannelLink); err != nil {
 				uiLogger.Fatal().Err(err).Msg("web UI failed")
 			}
 		}()

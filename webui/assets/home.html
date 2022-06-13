@@ -1,130 +1,110 @@
 <!doctype html>
 
-{{ template "head.html" }}
-
-{{ template "style.html" }}
-<header>
-  <div class="navbar">
-    <a class="active" href="/"><i class="fa fa-fw fa-play-circle"></i> Unsuspend a namespace</a>
-    <a href="/list"><i class="fa fa-fw fa-list"></i> See all namespaces</a>
-    <a href="/bug"><i class="fa fa-fw fa-bug"></i> Found a bug?</a>
-    <a style="float: right" href="https://github.com/govirtuo/kube-ns-suspender" target="_blank"><i class="fa fa-fw fa-github"></i> Project page</a>
-  </div>
-</header>
+{{ template "_head.html" }}
+{{ template "_style.html" }}
+{{ template "_navbar.html" }}
 
 <body>
-  <div>
-    {{if not .NamespacesList.IsEmpty}}
-    <br>
-    <form action="/unsuspend" method="post">
-      <label for="namespaces"><b>Choose a namespace to unsuspend:</b></label>
-      <br>
-      <br>
-      <div class="ns-select" style="width:200px;">
-        <select name="namespaces" id="namespace">
-        <option value=ignore>Select a namespace</option>
-        {{range .NamespacesList.Namespaces}}
-          <option value={{.Name}}>{{.Name}}</option>
-        {{end}}
-        </select>
+  {{if .Error}}
+  <div class="container mt-5">
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <strong>Error!</strong> {{.ErrMsg}}
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+  </div>
+  {{end}}
+
+  {{if .HasMessage}}
+  <div class="container mt-5">
+    <div class="container mt-5">
+      <div class="alert alert-info alert-dismissible fade show" role="alert">
+        {{.Message}}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
       </div>
-      <br><br><br>
-      <input class="button" type="submit" onclick="return confirm('Are you sure you want to unsuspend this namespace?')" value="Unsuspend">
-    </form>
-    {{else}}
-      <p>No suspended namespaces</p>
-      <button class="button" onclick="window.location.reload();"><i class="fa fa-refresh" aria-hidden="true"></i> Refresh page</button>
-    {{end}}
+    </div>
+  </div>
+  {{end}}
+
+  <div class="container mt-5">
+    <h1>Namespaces</h1>
+  </div>
+
+  <div class="container mt-5">
+    <input type="text" id="searchBar" onkeyup="search()" placeholder="Search for namespaces...">
+
+    <table id="namespacesTable">
+      <tr class="header">
+        <th style="text-align: center;">Namespace</th>
+        <th style="text-align: center;">State</th>
+        <th style="text-align: center;">Daily Suspend Time</th>
+        <th style="text-align: center;">Next Suspend Time</th>
+        <th style="text-align: center;">Action</th>
+      </tr>
+      {{range .NamespacesList.Namespaces}}
+        <tr>
+          <td style="text-align: center;"><code>{{.Name}}</code></td>
+          <td style="text-align: center;">
+            {{if eq .State "Running"}}
+            <span class="badge badge-pill badge-info">{{.State}}</span>
+            {{else if eq .State "Suspended"}}
+            <span class="badge badge-pill badge-danger">{{.State}}</span>
+            {{else}}
+            <span class="badge badge-pill badge-secondary">Unknown</span>
+            {{end}}
+          </td>
+          <td style="text-align: center;">{{.DailySuspendTime}}</td>
+          <td style="text-align: center;">{{.NextSuspendTime}}</td>
+          <td style="text-align: center;">
+            {{if eq .State "Running"}}
+              <a href="/suspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i class="fa fa-pause-circle-o" aria-hidden="true"></i> Suspend</a>
+            {{else if eq .State "Suspended"}}
+              <a href="/unsuspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i class="fa fa-play-circle-o" aria-hidden="true"></i> Unsuspend</a>
+            {{else}}
+            <a href="/suspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i class="fa fa-pause-circle-o" aria-hidden="true"></i> Suspend</a>
+            / <a href="/unsuspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i class="fa fa-play-circle-o" aria-hidden="true"></i> Unsuspend</a>
+            {{end}}
+          </td>
+        </tr>
+      {{end}}
+    </table>
+      </table>
+      <br>
+      <button type="button" class="btn btn-light" onclick="window.location.reload();"><i class="fa fa-refresh" aria-hidden="true"></i> Refresh list</button>
   </div>
 </body>
 
 <script>
-  var x, i, j, l, ll, selElmnt, a, b, c;
-/* Look for any elements with the class "ns-select": */
-x = document.getElementsByClassName("ns-select");
-l = x.length;
-for (i = 0; i < l; i++) {
-  selElmnt = x[i].getElementsByTagName("select")[0];
-  ll = selElmnt.length;
-  /* For each element, create a new DIV that will act as the selected item: */
-  a = document.createElement("DIV");
-  a.setAttribute("class", "select-selected");
-  a.innerHTML = selElmnt.options[selElmnt.selectedIndex].innerHTML;
-  x[i].appendChild(a);
-  /* For each element, create a new DIV that will contain the option list: */
-  b = document.createElement("DIV");
-  b.setAttribute("class", "select-items select-hide");
-  for (j = 1; j < ll; j++) {
-    /* For each option in the original select element,
-    create a new DIV that will act as an option item: */
-    c = document.createElement("DIV");
-    c.innerHTML = selElmnt.options[j].innerHTML;
-    c.addEventListener("click", function(e) {
-        /* When an item is clicked, update the original select box,
-        and the selected item: */
-        var y, i, k, s, h, sl, yl;
-        s = this.parentNode.parentNode.getElementsByTagName("select")[0];
-        sl = s.length;
-        h = this.parentNode.previousSibling;
-        for (i = 0; i < sl; i++) {
-          if (s.options[i].innerHTML == this.innerHTML) {
-            s.selectedIndex = i;
-            h.innerHTML = this.innerHTML;
-            y = this.parentNode.getElementsByClassName("same-as-selected");
-            yl = y.length;
-            for (k = 0; k < yl; k++) {
-              y[k].removeAttribute("class");
-            }
-            this.setAttribute("class", "same-as-selected");
-            break;
-          }
-        }
-        h.click();
-    });
-    b.appendChild(c);
-  }
-  x[i].appendChild(b);
-  a.addEventListener("click", function(e) {
-    /* When the select box is clicked, close any other select boxes,
-    and open/close the current select box: */
-    e.stopPropagation();
-    closeAllSelect(this);
-    this.nextSibling.classList.toggle("select-hide");
-    this.classList.toggle("select-arrow-active");
-  });
-}
+function search() {
+  // Declare variables
+  var input, filter, table, tr, td, i, txtValue;
+  input = document.getElementById("searchBar");
+  filter = input.value.toUpperCase();
+  table = document.getElementById("namespacesTable");
+  tr = table.getElementsByTagName("tr");
 
-function closeAllSelect(elmnt) {
-  /* A function that will close all select boxes in the document,
-  except the current select box: */
-  var x, y, i, xl, yl, arrNo = [];
-  x = document.getElementsByClassName("select-items");
-  y = document.getElementsByClassName("select-selected");
-  xl = x.length;
-  yl = y.length;
-  for (i = 0; i < yl; i++) {
-    if (elmnt == y[i]) {
-      arrNo.push(i)
-    } else {
-      y[i].classList.remove("select-arrow-active");
-    }
-  }
-  for (i = 0; i < xl; i++) {
-    if (arrNo.indexOf(i)) {
-      x[i].classList.add("select-hide");
+  // Loop through all table rows, and hide those who don't match the search query
+  for (i = 0; i < tr.length; i++) {
+    td = tr[i].getElementsByTagName("td")[0];
+    if (td) {
+      txtValue = td.textContent || td.innerText;
+      if (txtValue.toUpperCase().indexOf(filter) > -1) {
+        tr[i].style.display = "";
+      } else {
+        tr[i].style.display = "none";
+      }
     }
   }
 }
-
-/* If the user clicks anywhere outside the select box,
-then close all select boxes: */
-document.addEventListener("click", closeAllSelect);
 </script>
-
 <div class="footer">
-  <p style="color: white;">
-      <svg style="float: left; padding-left: 10px; fill: white" xmlns="http://www.w3.org/2000/svg" width="100" viewBox="0 0 120 21" class="virtuo__fgoyM9QWRzAcU8TZEOVrZ virtuo__3ZDX5lgUXyFra7kGwhLbip virtuo__T6nUdJ7fazxs0dOE-xeES"><path d="M85.472 18.205c.654 0 1.264-.118 1.83-.355a4.412 4.412 0 0 0 1.471-1.006c.417-.429.744-.946.982-1.538.238-.591.342-1.271.342-2.026V.163h3.152v13.132c0 1.11-.193 2.144-.58 3.09a7.302 7.302 0 0 1-1.62 2.456 7.096 7.096 0 0 1-2.47 1.597c-.95.385-1.977.562-3.107.562-1.115 0-2.156-.192-3.093-.562a7.542 7.542 0 0 1-2.468-1.597 7.302 7.302 0 0 1-1.621-2.455c-.387-.947-.58-1.967-.58-3.09V.162h3.152v13.132c0 .754.12 1.42.342 2.026.238.592.55 1.11.982 1.538a4.64 4.64 0 0 0 1.472 1.006c.55.222 1.16.34 1.814.34zM55.896.163h15.703v2.943h-6.29v17.731H62.17V3.106h-6.275V.163zM42.72 12.63h-3.628v8.207h-3.138V.163h8.268c.863 0 1.68.162 2.439.488a6.184 6.184 0 0 1 1.992 1.33 6.31 6.31 0 0 1 1.339 1.982 6.11 6.11 0 0 1 .505 2.426c0 1.212-.238 2.188-.728 2.943-.491.754-1.012 1.345-1.592 1.79a7.388 7.388 0 0 1-2.304 1.182l5.115 8.533h-3.465l-4.803-8.207zm-3.628-2.943h5.13c.416 0 .818-.09 1.19-.267.371-.177.699-.414.981-.71.283-.295.52-.635.699-1.035.178-.399.268-.828.268-1.286 0-.459-.09-.888-.268-1.287-.179-.4-.416-.74-.699-1.035a3.329 3.329 0 0 0-.981-.71 2.742 2.742 0 0 0-1.19-.266h-5.13v6.596zM0 .163h3.301l5.8 15.912L14.884.163h3.3l-7.598 20.674H7.613L0 .163zm27.51 20.674h-3.138V.163h3.137v20.674zM116.861 10.5c0-1.11-.193-2.144-.58-3.09a8.355 8.355 0 0 0-1.516-2.456 6.444 6.444 0 0 0-2.156-1.597 5.813 5.813 0 0 0-2.513-.562c-.863 0-1.696.192-2.513.562a6.87 6.87 0 0 0-2.156 1.597 8.511 8.511 0 0 0-1.532 2.44c-.387.947-.58 1.967-.58 3.091 0 1.11.193 2.145.58 3.076.387.947.892 1.76 1.532 2.44a6.86 6.86 0 0 0 2.156 1.612 5.83 5.83 0 0 0 2.513.577 5.83 5.83 0 0 0 2.513-.577 6.696 6.696 0 0 0 2.156-1.612 8.473 8.473 0 0 0 1.517-2.44c.386-.917.58-1.952.58-3.061zm3.138 0c0 1.479-.268 2.869-.803 4.14a11.086 11.086 0 0 1-2.156 3.328 10.02 10.02 0 0 1-3.153 2.233 9.278 9.278 0 0 1-3.791.799 9.278 9.278 0 0 1-3.792-.799 9.63 9.63 0 0 1-3.153-2.233c-.907-.946-1.62-2.055-2.156-3.327-.535-1.272-.803-2.647-.803-4.141 0-1.464.268-2.84.803-4.126a11.232 11.232 0 0 1 2.156-3.357 9.854 9.854 0 0 1 3.153-2.233A9.511 9.511 0 0 1 110.097 0c1.323 0 2.587.266 3.791.799a9.793 9.793 0 0 1 3.138 2.233c.907.946 1.62 2.07 2.156 3.357.55 1.272.818 2.647.818 4.111z"></path></svg>
-      Developed by <a href="https://www.govirtuo.com" target="_blank">Virtuo Technologies</a>, delivered under MIT license. Version: '{{.Version}}' (built: {{.BuildDate}}).
-  </p>
+  <div class="container">
+    <p style="text-align: center;">
+        Developed by <a href="https://www.govirtuo.com">Virtuo Technologies</a>, delivered under MIT license. Version: '{{.Version}}' (built: {{.BuildDate}}).
+    </p>
+  </div>
 </div>
 </html>

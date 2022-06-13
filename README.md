@@ -72,20 +72,22 @@ The suspender function does all the work of reading namespaces/resources annotat
 
 ### Flags
 
-| Flag                 | Description                        |      Default      | Environment variable                 |
-| -------------------- | ---------------------------------- | :---------------: | ------------------------------------ |
-| `--controller-name`  | Unique name of the controller      | kube-ns-suspender | `KUBE_NS_SUSPENDER_CONTROLLER_NAME`  |
-| `--human`            | Disable JSON logging               |       false       | `KUBE_NS_SUSPENDER_HUMAN`            |
-| `--log-level`        | Log level                          |       debug       | `KUBE_NS_SUSPENDER_LOG_LEVEL`        |
-| `--no-kube-warnings` | Disable Kubernetes warnings        |       false       | `KUBE_NS_SUSPENDER_NO_KUBE_WARNINGS` |
-| `--pprof`            | Start pprof server                 |       false       | `KUBE_NS_SUSPENDER_PPROF` |
-| `--pprof-addr`       | Address and port to use with pprof |       :4455       | `KUBE_NS_SUSPENDER_PPROF_ADDR` |
-| `--prefix`           | Prefix to use for annotations      | kube-ns-suspender | `KUBE_NS_SUSPENDER_PREFIX`           |
-| `--running-duration` | Running duration                   |        4h         | `KUBE_NS_SUSPENDER_RUNNING_DURATION` |
-| `--timezone`         | Timezone to use                    |   Europe/Paris    | `KUBE_NS_SUSPENDER_TIMEZONE`         |
-| `--ui-embedded`      | Start UI in background             |       false       | `KUBE_NS_SUSPENDER_UI_EMBEDDED`      |
-| `--ui-only`          | Start UI only                      |       false       | `KUBE_NS_SUSPENDER_UI_ONLY`          |
-| `--watcher-idle`     | Watcher idle duration in seconds   |        15         | `KUBE_NS_SUSPENDER_WATCHER_IDLE`     |
+| Flag                   | Description                                       |      Default      | Environment variable                   |
+| ---------------------- | ------------------------------------------------- | :---------------: | -------------------------------------- |
+| `--controller-name`    | Unique name of the controller                     | kube-ns-suspender | `KUBE_NS_SUSPENDER_CONTROLLER_NAME`    |
+| `--human`              | Disable JSON logging                              |       false       | `KUBE_NS_SUSPENDER_HUMAN`              |
+| `--log-level`          | Log level                                         |       debug       | `KUBE_NS_SUSPENDER_LOG_LEVEL`          |
+| `--no-kube-warnings`   | Disable Kubernetes warnings                       |       false       | `KUBE_NS_SUSPENDER_NO_KUBE_WARNINGS`   |
+| `--pprof`              | Start pprof server                                |       false       | `KUBE_NS_SUSPENDER_PPROF`              |
+| `--pprof-addr`         | Address and port to use with pprof                |       :4455       | `KUBE_NS_SUSPENDER_PPROF_ADDR`         |
+| `--prefix`             | Prefix to use for annotations                     | kube-ns-suspender | `KUBE_NS_SUSPENDER_PREFIX`             |
+| `--running-duration`   | Running duration                                  |        4h         | `KUBE_NS_SUSPENDER_RUNNING_DURATION`   |
+| `--slack-channel-link` | Link of the help Slack channel in the UI bug page |        ""         | `KUBE_NS_SUSPENDER_SLACK_CHANNEL_LINK` |
+| `--slack-channel-name` | Name of the help Slack channel in the UI bug page |        ""         | `KUBE_NS_SUSPENDER_SLACK_CHANNEL_NAME` |
+| `--timezone`           | Timezone to use                                   |   Europe/Paris    | `KUBE_NS_SUSPENDER_TIMEZONE`           |
+| `--ui-embedded`        | Start UI in background                            |       false       | `KUBE_NS_SUSPENDER_UI_EMBEDDED`        |
+| `--ui-only`            | Start UI only                                     |       false       | `KUBE_NS_SUSPENDER_UI_ONLY`            |
+| `--watcher-idle`       | Watcher idle duration in seconds                  |        15         | `KUBE_NS_SUSPENDER_WATCHER_IDLE`       |
 
 ### Resources
 
@@ -164,19 +166,24 @@ Cronjobs have a `spec.suspend` value that indicates if they must be runned or no
 >
 > The webUI is **disabled** by default.
 
+Since version `v2.1.0`, you can both suspend and unsuspend a namespace from the web UI. It is also possible to specify a custom Slack channel using `--slack-channel-name` and `--slack-channel-link` (and their associated env vars). If only the link is provided, nothing will appear, but if there is only the name the Slack channel name will appear but will not be clickable. By default, only the link to the GitHub issues appears.
+
 <details>
 <summary>Click to see some screenshots</summary>
 
-![List namespaces](docs/images/screenshots/list_ns.png)
+![Namespaces list with suspended namespace](docs/images/screenshots/home.png)
 
-![Unsuspend a namespace](docs/images/screenshots/unsuspend_ns.png)
+![Namespaces list with running namespace](docs/images/screenshots/home-running.png)
+
+![Report a bug](docs/images/screenshots/bug.png)
+
 </details>
 
 ## Development flow
 
 To test the modifications in real-time, this project uses [`devspace`](https://devspace.sh/). It is configured to use the manifests in `manifests/dev/`.
 
-> :check_mark:
+> :bulb:
 >
 > * You can start a local Kubernetes cluster with the command: `make kind-start`
 > * Then run in your shell `export KUBE_CONFIG=` the value reported :point_up:
@@ -192,7 +199,7 @@ Deploy the testing namespace with mock resources:
 ```
 kubectl apply -f manifests/testing-namespace
 ```
-
+****
 Then deploy your dev version of `kube-ns-suspender`:
 
 ```
