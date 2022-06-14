@@ -47,9 +47,7 @@ kubectl apply -f manifests/run/base/
 
 This will apply all the required resources.
 
-> :memo:
-> 
-> The latest version of `kube-ns-suspender` will be deployed as the image tag used is `:latest`.
+> **Note**: the latest version of `kube-ns-suspender` will be deployed as the image tag used is `:latest`.
 
 A namespace `kube-ns-suspender` will be created and the manifests will be deployed within.
 
@@ -135,10 +133,7 @@ When unsuspending a namespace, a new annotation will be added automically: `kube
 
 This annotation contains the date at which the namespace will be automatically suspended again (following the format [`time.RFC822Z`](https://pkg.go.dev/time#pkg-constants)). The default value set by the controller can be tweaked with the flag `--running-duration`. The annotation value can also be edited manually if needed.
 
-> :memo:
->
-> `dailySuspendTime` has a higher priority than `nextSuspendTime`
->
+> **Note**: `dailySuspendTime` has a higher priority than `nextSuspendTime`
 
 #### On resources
 
@@ -162,9 +157,7 @@ Cronjobs have a `spec.suspend` value that indicates if they must be runned or no
 
 ## WebUI screenshots
 
-> :memo:
->
-> The webUI is **disabled** by default.
+> **Note**: the webUI is **disabled** by default.
 
 Since version `v2.1.0`, you can both suspend and unsuspend a namespace from the web UI. It is also possible to specify a custom Slack channel using `--slack-channel-name` and `--slack-channel-link` (and their associated env vars). If only the link is provided, nothing will appear, but if there is only the name the Slack channel name will appear but will not be clickable. By default, only the link to the GitHub issues appears.
 
