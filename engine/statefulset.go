@@ -58,6 +58,9 @@ func patchStatefulsetReplicas(ctx context.Context, cs *kubernetes.Clientset, ns,
 		// if we want 0 replicas, it means that we are suspending the namespace,
 		// so before adjusting the replicas count, we want to save it for later
 		if repl == 0 {
+			// there is no annotations in the object's manifest, so the map must
+			// be initialized
+			// see issue #85
 			if result.Annotations == nil {
 				result.Annotations = make(map[string]string)
 			}
