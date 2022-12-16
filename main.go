@@ -133,7 +133,7 @@ func main() {
 	eng.Logger.Info().Msgf("clientset successfully created in %s", time.Since(start))
 
 	// create the keda client
-	kedaclient := nil
+	kedaclient := &v1alpha1.KedaV1alpha1Client{}
 	if eng.Options.KedaEnabled {
 		start = time.Now()
 		kedaclient, err = v1alpha1.NewForConfig(config)

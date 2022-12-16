@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
 	"github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -217,9 +218,10 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			sLogger.Fatal().Err(err).Msg("cannot list statefulsets")
 		}
 
+		scaledobjects := &kedav1alpha1.ScaledObjectList{}
 		if eng.Options.KedaEnabled {
 			// get scaledobjects of the namespace
-			scaledobjects, err := kedacs.ScaledObjects(n.Name).List(ctx, metav1.ListOptions{})
+			scaledobjects, err = kedacs.ScaledObjects(n.Name).List(ctx, metav1.ListOptions{})
 			if err != nil {
 				sLogger.Fatal().Err(err).Msg("cannot list scaledobjects")
 			}
