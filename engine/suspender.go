@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
@@ -13,7 +14,7 @@ import (
 
 // Suspender receives namespaces from Watcher and handles them. It means that
 // it will read and write namespaces' annotations, and scale resources.
-func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
+func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, kedacs *v1alpha1.KedaV1alpha1Client) {
 	eng.Mutex.Lock()
 	eng.Logger.Info().Str("routine", "suspender").Msg("suspender started")
 
@@ -216,6 +217,12 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			sLogger.Fatal().Err(err).Msg("cannot list statefulsets")
 		}
 
+		// get scaledobjects of the namespace
+		scaledobjects, err := kedacs.ScaledObjects(n.Name).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			sLogger.Fatal().Err(err).Msg("cannot list scaledobjects")
+		}
+
 		/*
 			Step 3
 
@@ -264,10 +271,20 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			sLogger.Debug().Str("step", stepName).Str("resource", "statefulsets").Msg("checking suspended Conformity")
 			go func() {
 				if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.Prefix); err != nil {
-					sLogger.Error().Err(err).Str("object", "statefulset").Msg("suspended steatfulsets conformity checks failed")
+					sLogger.Error().Err(err).Str("object", "statefulset").Msg("suspended statefulsets conformity checks failed")
 				}
 				wg.Done()
 			}()
+
+			// check and patch scaledobjects
+			sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking suspended Conformity")
+			go func() {
+				if err := checkSuspendedScaledObjectsConformity(ctx, sLogger, scaledobjects.Items, kedacs, n.Name); err != nil {
+					sLogger.Error().Err(err).Str("object", "scaledobjects").Msg("suspended scaledobjects conformity checks failed")
+				}
+				wg.Done()
+			}()
+
 			// we wait for all the checks to be done
 			wg.Wait()
 			sLogger.Debug().Str("step", stepName).Msg("checking suspended Conformity done")
@@ -343,7 +360,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			go func() {
 				hasBeenPatched, err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.Prefix)
 				if err != nil {
-					sLogger.Error().Err(err).Msg("running steatfulsets conformity checks failed")
+					sLogger.Error().Err(err).Msg("running statefulsets conformity checks failed")
 				}
 				if hasBeenPatched {
 					sLogger.Debug().Str("step", stepName).Str("resource", "statefulsets").Msg("resource has been patched")
@@ -351,6 +368,21 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 				}
 				wg.Done()
 			}()
+
+			// check and patch scaledobjects
+			sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking running conformity")
+			go func() {
+				hasBeenPatched, err := checkRunningScaledObjectsConformity(ctx, sLogger, scaledobjects.Items, kedacs, n.Name)
+				if err != nil {
+					sLogger.Error().Err(err).Msg("running scaledobjects conformity checks failed")
+				}
+				if hasBeenPatched {
+					sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("resource has been patched")
+					patchedResourcesCounter++
+				}
+				wg.Done()
+			}()
+
 			// we wait for all the checks to be done
 			wg.Wait()
 			sLogger.Debug().Str("step", stepName).Msg("checking running conformity done")

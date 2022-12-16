@@ -11,6 +11,7 @@ import (
 	"github.com/govirtuo/kube-ns-suspender/metrics"
 	"github.com/govirtuo/kube-ns-suspender/pprof"
 	"github.com/govirtuo/kube-ns-suspender/webui"
+	"github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
 	"github.com/rs/zerolog/log"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -130,10 +131,18 @@ func main() {
 	}
 	eng.Logger.Info().Msgf("clientset successfully created in %s", time.Since(start))
 
+	// create the keda client
+	start = time.Now()
+	kedaclient, err := v1alpha1.NewForConfig(config)
+	if err != nil {
+		eng.Logger.Fatal().Err(err).Msg("cannot create the keda client")
+	}
+	eng.Logger.Info().Msgf("keda client successfully created in %s", time.Since(start))
+
 	eng.Logger.Info().Msgf("starting 'Watcher' and 'Suspender' routines")
 	ctx := context.Background()
 	go eng.Watcher(ctx, clientset)
-	go eng.Suspender(ctx, clientset)
+	go eng.Suspender(ctx, clientset, kedaclient)
 
 	// wait forever
 	select {}
