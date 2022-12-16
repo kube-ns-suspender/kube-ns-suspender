@@ -48,7 +48,6 @@ func checkSuspendedScaledObjectsConformity(ctx context.Context, l zerolog.Logger
 func patchScaledObjectSuspend(ctx context.Context, cs *v1alpha1.KedaV1alpha1Client, ns, c string, suspend bool) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, err := cs.ScaledObjects(ns).Get(ctx, c, metav1.GetOptions{})
-		//result, err := cs.KedaV1alpha1().scaledobjects(ns).Get(ctx, c, metav1.GetOptions{})
 		if err != nil {
 			return err
 		}
