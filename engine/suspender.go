@@ -217,10 +217,12 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			sLogger.Fatal().Err(err).Msg("cannot list statefulsets")
 		}
 
-		// get scaledobjects of the namespace
-		scaledobjects, err := kedacs.ScaledObjects(n.Name).List(ctx, metav1.ListOptions{})
-		if err != nil {
-			sLogger.Fatal().Err(err).Msg("cannot list scaledobjects")
+		if eng.Options.KedaEnabled {
+			// get scaledobjects of the namespace
+			scaledobjects, err := kedacs.ScaledObjects(n.Name).List(ctx, metav1.ListOptions{})
+			if err != nil {
+				sLogger.Fatal().Err(err).Msg("cannot list scaledobjects")
+			}
 		}
 
 		/*
@@ -276,15 +278,16 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 				wg.Done()
 			}()
 
-			// check and patch scaledobjects
-			sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking suspended Conformity")
-			go func() {
-				if err := checkSuspendedScaledObjectsConformity(ctx, sLogger, scaledobjects.Items, kedacs, n.Name); err != nil {
-					sLogger.Error().Err(err).Str("object", "scaledobjects").Msg("suspended scaledobjects conformity checks failed")
-				}
-				wg.Done()
-			}()
-
+			if eng.Options.KedaEnabled {
+				// check and patch scaledobjects
+				sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking suspended Conformity")
+				go func() {
+					if err := checkSuspendedScaledObjectsConformity(ctx, sLogger, scaledobjects.Items, kedacs, n.Name); err != nil {
+						sLogger.Error().Err(err).Str("object", "scaledobjects").Msg("suspended scaledobjects conformity checks failed")
+					}
+					wg.Done()
+				}()
+			}
 			// we wait for all the checks to be done
 			wg.Wait()
 			sLogger.Debug().Str("step", stepName).Msg("checking suspended Conformity done")
@@ -369,19 +372,21 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 				wg.Done()
 			}()
 
-			// check and patch scaledobjects
-			sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking running conformity")
-			go func() {
-				hasBeenPatched, err := checkRunningScaledObjectsConformity(ctx, sLogger, scaledobjects.Items, kedacs, n.Name)
-				if err != nil {
-					sLogger.Error().Err(err).Msg("running scaledobjects conformity checks failed")
-				}
-				if hasBeenPatched {
-					sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("resource has been patched")
-					patchedResourcesCounter++
-				}
-				wg.Done()
-			}()
+			if eng.Options.KedaEnabled {
+				// check and patch scaledobjects
+				sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking running conformity")
+				go func() {
+					hasBeenPatched, err := checkRunningScaledObjectsConformity(ctx, sLogger, scaledobjects.Items, kedacs, n.Name)
+					if err != nil {
+						sLogger.Error().Err(err).Msg("running scaledobjects conformity checks failed")
+					}
+					if hasBeenPatched {
+						sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("resource has been patched")
+						patchedResourcesCounter++
+					}
+					wg.Done()
+				}()
+			}
 
 			// we wait for all the checks to be done
 			wg.Wait()

@@ -45,6 +45,7 @@ func main() {
 	fs.StringVar(&opt.PProfAddr, "pprof-addr", ":4455", "Address and port to use with pprof")
 	fs.StringVar(&opt.SlackChannelName, "slack-channel-name", "", "Name of the help Slack channel in the UI bug page")
 	fs.StringVar(&opt.SlackChannelLink, "slack-channel-link", "", "Link of the helm Slack channel in the UI bug page")
+	fs.BoolVar(&opt.KedaEnabled, "keda-enabled", false, "Enable puasing of Keda.sh scaledobjects")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}
@@ -132,12 +133,15 @@ func main() {
 	eng.Logger.Info().Msgf("clientset successfully created in %s", time.Since(start))
 
 	// create the keda client
-	start = time.Now()
-	kedaclient, err := v1alpha1.NewForConfig(config)
-	if err != nil {
-		eng.Logger.Fatal().Err(err).Msg("cannot create the keda client")
+	kedaclient := nil
+	if eng.Options.KedaEnabled {
+		start = time.Now()
+		kedaclient, err = v1alpha1.NewForConfig(config)
+		if err != nil {
+			eng.Logger.Fatal().Err(err).Msg("cannot create the keda client")
+		}
+		eng.Logger.Info().Msgf("keda client successfully created in %s", time.Since(start))
 	}
-	eng.Logger.Info().Msgf("keda client successfully created in %s", time.Since(start))
 
 	eng.Logger.Info().Msgf("starting 'Watcher' and 'Suspender' routines")
 	ctx := context.Background()
