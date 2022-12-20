@@ -220,6 +220,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 
 		scaledobjects := &kedav1alpha1.ScaledObjectList{}
 		if eng.Options.KedaEnabled {
+			sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("get resource from k8s")
 			// get scaledobjects of the namespace
 			scaledobjects, err = kedacs.ScaledObjects(n.Name).List(ctx, metav1.ListOptions{})
 			if err != nil {
@@ -281,6 +282,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			}()
 
 			if eng.Options.KedaEnabled {
+				wg.Add(1)
 				// check and patch scaledobjects
 				sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking suspended Conformity")
 				go func() {
@@ -375,6 +377,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			}()
 
 			if eng.Options.KedaEnabled {
+				wg.Add(1)
 				// check and patch scaledobjects
 				sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking running conformity")
 				go func() {

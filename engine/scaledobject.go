@@ -15,10 +15,12 @@ const pauseAnnotation string = "autoscaling.keda.sh/paused-replicas"
 func checkRunningScaledObjectsConformity(ctx context.Context, l zerolog.Logger, scaledobjects []kedav1alpha1.ScaledObject, cs *v1alpha1.KedaV1alpha1Client, ns string) (bool, error) {
 	hasBeenPatched := false
 	for _, c := range scaledobjects {
+		l.Debug().Str("scaledobject", c.Name).Msgf("running with annotations %v", c.Annotations)
 		if c.Annotations != nil {
+			l.Debug().Str("scaledobject", c.Name).Msgf("found annotation %v", c.Annotations[pauseAnnotation])
 			if _, ok := c.Annotations[pauseAnnotation]; ok {
 				l.Info().Str("scaledobject", c.Name).Msgf("updating %s from paused to unpaused", c.Name)
-				if err := patchScaledObjectSuspend(ctx, cs, ns, c.Name, false); err != nil {
+				if err := patchScaledObjectSuspend(ctx, cs, ns, c.Name, false, l); err != nil {
 					return hasBeenPatched, err
 				}
 				hasBeenPatched = true
@@ -30,13 +32,20 @@ func checkRunningScaledObjectsConformity(ctx context.Context, l zerolog.Logger, 
 
 func checkSuspendedScaledObjectsConformity(ctx context.Context, l zerolog.Logger, scaledobjects []kedav1alpha1.ScaledObject, cs *v1alpha1.KedaV1alpha1Client, ns string) error {
 	for _, c := range scaledobjects {
-		unpaused := c.Annotations == nil
-		if !unpaused {
-			_, unpaused = c.Annotations[pauseAnnotation]
+		l.Debug().Str("scaledobject", c.Name).Msgf("suspended with annotations %v", c.Annotations)
+		if c.Annotations != nil {
+			l.Debug().Str("scaledobject", c.Name).Msgf("found annotation %v", c.Annotations[pauseAnnotation])
 		}
-		if unpaused {
+		paused := false
+		if c.Annotations != nil {
+			if _, ok := c.Annotations[pauseAnnotation]; ok {
+				paused = true
+			}
+		}
+		l.Debug().Str("scaledobject", c.Name).Msgf("paused is %v", paused)
+		if !paused {
 			l.Info().Str("scaledobject", c.Name).Msgf("updating %s from unpaused to paused", c.Name)
-			if err := patchScaledObjectSuspend(ctx, cs, ns, c.Name, true); err != nil {
+			if err := patchScaledObjectSuspend(ctx, cs, ns, c.Name, true, l); err != nil {
 				return err
 			}
 		}
@@ -45,7 +54,7 @@ func checkSuspendedScaledObjectsConformity(ctx context.Context, l zerolog.Logger
 }
 
 // patchScaledObjectSuspend updates the suspend state of a given scaledobject
-func patchScaledObjectSuspend(ctx context.Context, cs *v1alpha1.KedaV1alpha1Client, ns, c string, suspend bool) error {
+func patchScaledObjectSuspend(ctx context.Context, cs *v1alpha1.KedaV1alpha1Client, ns, c string, suspend bool, l zerolog.Logger) error {
 	return retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		result, err := cs.ScaledObjects(ns).Get(ctx, c, metav1.GetOptions{})
 		if err != nil {
@@ -59,9 +68,11 @@ func patchScaledObjectSuspend(ctx context.Context, cs *v1alpha1.KedaV1alpha1Clie
 				result.Annotations = make(map[string]string)
 			}
 			result.Annotations[pauseAnnotation] = "0"
+			l.Debug().Str("scaledobject", c).Msg("adding pause annotation")
 		} else {
 			if result.Annotations != nil {
 				delete(result.Annotations, pauseAnnotation)
+				l.Debug().Str("scaledobject", c).Msg("deleting pause annotation")
 			}
 		}
 		_, err = cs.ScaledObjects(ns).Update(ctx, result, metav1.UpdateOptions{})

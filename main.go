@@ -141,6 +141,8 @@ func main() {
 			eng.Logger.Fatal().Err(err).Msg("cannot create the keda client")
 		}
 		eng.Logger.Info().Msgf("keda client successfully created in %s", time.Since(start))
+	} else {
+		eng.Logger.Info().Msg("keda is disabled")
 	}
 
 	eng.Logger.Info().Msgf("starting 'Watcher' and 'Suspender' routines")
