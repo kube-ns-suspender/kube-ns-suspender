@@ -143,6 +143,19 @@ IMAGE=${BINARY_NAME}
 SEMVER=${VERSION}
 GITSHA=$(shell git rev-parse --short HEAD)
 
+.PHONY: asdf
+asdf: ## Installs the configured `asdf` plugins and enables the configured versions
+	@echo "Updating asdf plugins..."
+	@asdf plugin update --all >/dev/null 2>&1 || true
+	@echo "Adding new asdf plugins..."
+	@cut -d" " -f1 .tool-versions | xargs -I % asdf plugin-add % >/dev/null 2>&1 || true
+	@echo "Installing asdf tools..."
+	@asdf install
+	@echo "Updating local environment to use proper tool versions..."
+	@tr '\n' '\0' <.tool-versions | xargs -0 sh -c 'for arg do asdf local $$arg; done'
+	@asdf reshim
+	@echo "Done!"
+
 .PHONY: display-image-name
 display-image-name:
 	@echo ${IMAGE}
