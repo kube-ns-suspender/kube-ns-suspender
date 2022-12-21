@@ -38,7 +38,7 @@ spec:
       env:
         - name: DOCKER_TLS_CERTDIR
           value: ''
-      image: 'docker:19.03.8-dind'
+      image: 'docker:20.10.17-dind'
       resources:
         limits:
           cpu: 1000m
