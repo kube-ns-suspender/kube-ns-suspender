@@ -3,7 +3,8 @@ GOTEST=$(GOCMD) test
 GOVET=$(GOCMD) vet
 BINARY_NAME=kube-ns-suspender
 VERSION=$(shell git describe --tags)
-DOCKER_REGISTRY?=ghcr.io/govirtuo
+#DOCKER_REGISTRY?=ghcr.io/govirtuo
+DOCKER_REGISTRY=docker.cogitocorp.us
 BUILD_DATE=$(shell date +'%Y-%m-%d_%H:%M:%ST%Z')
 
 # Tooling and testing
@@ -135,3 +136,42 @@ help: ## Show this help
 
 version: ## Display current version
 	@echo ${VERSION}
+
+##### COGITO BUILD #####
+REPOSITORY=${DOCKER_REGISTRY}
+IMAGE=${BINARY_NAME}
+SEMVER=${VERSION}
+GITSHA=$(shell git rev-parse --short HEAD)
+
+.PHONY: display-image-name
+display-image-name:
+	@echo ${IMAGE}
+
+.PHONY: display-repo-name
+display-repo-name:
+	@echo ${REPOSITORY}
+
+.PHONY: display-git-sha
+display-git-sha:
+	@echo ${GITSHA}
+
+.PHONY: display-jenkins-build_number
+display-jenkins-build_number:
+	@echo "b${BUILD_NUMBER}"
+
+.PHONY: display-semver
+display-semver:
+	@echo ${SEMVER}
+
+.PHONY: display-image-tag
+display-image-tag:
+	@echo ${SEMVER}-b${BUILD_NUMBER}-${GITSHA}
+
+.PHONY: display-image-string-full
+display-image-string-full:
+	@echo ${REPOSITORY}/${IMAGE}:${SEMVER}-b${BUILD_NUMBER}-${GITSHA}
+
+.PHONY: display-image-string-latest
+display-image-string-latest:
+	@echo ${REPOSITORY}/${IMAGE}:latest
+

@@ -1,0 +1,155 @@
+Map prebuildResult = [:]
+String prebuildResultsFile = 'prebuildResults.yml'
+String prebuildResultsStash = 'prebuildResults'
+def quaPromotionCancelled = false
+
+pipeline {
+
+  agent {
+    kubernetes {
+      label "build-kube-ns-suspender-${UUID.randomUUID().toString()}".take(63) // all your pods will be named with this prefix, followed by a unique id
+      yamlFile '.jenkins/k8s-build-pod.yaml'  // path to the pod definition relative to the root of our project
+      defaultContainer 'build'  // define a default container if more than a few stages use it, will default to jnlp container
+    }
+  }
+
+  options {
+    ansiColor('xterm')
+
+    // Preserve stashes from the 20 latest builds
+    preserveStashes(buildCount: 20)
+
+    timestamps()
+  }
+
+  stages {
+
+    stage('prebuild') {
+      steps {
+        container('build') {
+          script {
+            // Get and persist the image tags
+            prebuildResult.imageFull = sh(script: 'make display-image-string-full', returnStdout: true).toString().trim()
+            prebuildResult.imageLatest = sh(script: 'make display-image-string-latest', returnStdout: true).toString().trim()
+            prebuildResult.imageTag = sh(script: 'make display-image-tag', returnStdout: true).toString().trim()
+
+            // Check to see if a docker image with this tag already exists
+            prebuildResult.imageExists = dockerImageExists(prebuildResult.imageFull)
+
+            // Write results to a file
+            writeYaml(file: prebuildResultsFile, data: prebuildResult)
+
+            // Stash the results
+            stash includes: prebuildResultsFile, name: prebuildResultsStash
+          }
+        }
+      } // steps
+    } // stage - prebuild
+
+    stage('build') {
+      when {
+        beforeAgent true
+        not { expression { prebuildResult.imageExists } }
+      }
+
+      steps {
+        container('build') {
+          withCredentials([usernamePassword(credentialsId: 'github-token', usernameVariable: 'GUSER', passwordVariable: 'GPASS'),
+                           usernamePassword(credentialsId: 'artifactory', usernameVariable: 'ARTIFACTORY_CREDENTIALS_USR', passwordVariable: 'ARTIFACTORY_CREDENTIALS_PSW')]) {
+            withDockerRegistry([credentialsId: 'artifactory', url: constants.DOCKER_URL ]) {
+              retry(3) {
+                script {
+                  env.ImageLatest = prebuildResult.imageLatest
+                  env.ImageFull = prebuildResult.imageFull
+                  env.ImageTag = prebuildResult.imageTag
+                  env.artifactory_contextUrl = constants.ARTIFACTORY_INTERNAL_URL
+
+                  sh '''
+                    git config --global credential.username \${GUSER}
+                    git config --global credential.helper "!echo password=\${GPASS}; echo"
+
+                    make docker-build
+                    docker tag kube-ns-suspender $ImageFull 
+                    docker tag kube-ns-suspender $ImageLatest
+                  '''
+                } // end of script
+              } // end of retry
+            } // end of withDockerRegistry
+          } // end of withCredentials
+        } // end of container
+      } //end of steps
+    } // stage - build
+
+    stage('test') {
+      when {
+        beforeAgent true
+        not { expression { prebuildResult.imageExists } }
+      }
+      steps {
+        container('build') {
+          script {
+            sh '''
+               make e2e
+            '''
+          }
+        }
+      } // steps
+    } // stage - test
+
+    stage('security') {
+      stages {
+        stage('prisma') {
+          steps {
+            container('build') {
+              script {
+                // Run the Prisma scan
+                prismaCloud(prebuildResult.imageFull, false)
+              }
+            }
+          }
+        } // stage - prisma
+      }
+    } // stage - security
+
+    stage('publish') {
+      when {
+        allOf {
+          branch 'cogito-build'
+          not { expression { prebuildResult.imageExists } }
+        }
+        beforeAgent true
+      }
+      steps {
+        container('build') {
+          script {
+            withDockerRegistry([credentialsId: 'artifactory', url: constants.DOCKER_URL ]) {
+              sh "docker push ${prebuildResult.imageFull}"
+              sh "docker push ${prebuildResult.imageLatest}"
+            }
+
+            def harborRepo = constants.HARBOR_URL.replace("https://","") + "/docker-snapshot"
+            def dockerRepo = constants.DOCKER_URL.replace("https://","")
+            def harborImageFull = prebuildResult.imageFull.replace(dockerRepo, harborRepo)
+            withDockerRegistry([credentialsId: 'harbor', url: constants.HARBOR_URL ]) {
+              sh "docker tag ${prebuildResult.imageFull} ${harborImageFull}"
+              sh "docker push ${harborImageFull}"
+            }
+          }
+        }
+      }
+    } // stage - publish
+
+    stage('push tags') {
+      when { branch 'cogito-build' }
+      steps {
+        sshagent(credentials: ['github-key']) {
+          git credentialsId: 'github-key', url: 'git@github.com:cogitocorp/kube-ns-suspender.git', poll: false
+          sh 'git config user.name "jenkins-cogito"'
+          sh 'git config user.email "tools-team@cogitocorp.com"'
+          sh "git tag ${prebuildResult.imageTag}"
+          sh 'git push origin --tags'
+        }
+      }
+    } // stage - push tags
+  } // stages
+}
