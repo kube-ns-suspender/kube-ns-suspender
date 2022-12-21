@@ -3,7 +3,8 @@ GOTEST=$(GOCMD) test
 GOVET=$(GOCMD) vet
 BINARY_NAME=kube-ns-suspender
 VERSION=$(shell git describe --tags)
-DOCKER_REGISTRY?=ghcr.io/govirtuo
+#DOCKER_REGISTRY?=ghcr.io/govirtuo
+DOCKER_REGISTRY=docker.cogitocorp.us
 BUILD_DATE=$(shell date +'%Y-%m-%d_%H:%M:%ST%Z')
 
 # Tooling and testing
@@ -135,3 +136,60 @@ help: ## Show this help
 
 version: ## Display current version
 	@echo ${VERSION}
+
+##### COGITO BUILD #####
+REPOSITORY=${DOCKER_REGISTRY}
+IMAGE=${BINARY_NAME}
+SEMVER=${VERSION}
+GITSHA=$(shell git rev-parse --short HEAD)
+
+.PHONY: asdf
+asdf: ## Installs the configured `asdf` plugins and enables the configured versions
+	@echo "Updating asdf plugins..."
+	@asdf plugin update --all >/dev/null 2>&1 || true
+	@echo "Adding new asdf plugins..."
+	@cut -d" " -f1 .tool-versions | xargs -I % asdf plugin-add % >/dev/null 2>&1 || true
+	@echo "Installing asdf tools..."
+	@asdf install
+	@echo "Updating local environment to use proper tool versions..."
+	@tr '\n' '\0' <.tool-versions | xargs -0 sh -c 'for arg do asdf local $$arg; done'
+	@asdf reshim
+	@echo "Done!"
+
+.PHONY: fetch-deps
+fetch-deps:
+	rm -rf vendor
+	go mod vendor
+
+.PHONY: display-image-name
+display-image-name:
+	@echo ${IMAGE}
+
+.PHONY: display-repo-name
+display-repo-name:
+	@echo ${REPOSITORY}
+
+.PHONY: display-git-sha
+display-git-sha:
+	@echo ${GITSHA}
+
+.PHONY: display-jenkins-build_number
+display-jenkins-build_number:
+	@echo "b${BUILD_NUMBER}"
+
+.PHONY: display-semver
+display-semver:
+	@echo ${SEMVER}
+
+.PHONY: display-image-tag
+display-image-tag:
+	@echo ${SEMVER}-b${BUILD_NUMBER}-${GITSHA}
+
+.PHONY: display-image-string-full
+display-image-string-full:
+	@echo ${REPOSITORY}/${IMAGE}:${SEMVER}-b${BUILD_NUMBER}-${GITSHA}
+
+.PHONY: display-image-string-latest
+display-image-string-latest:
+	@echo ${REPOSITORY}/${IMAGE}:latest
+
