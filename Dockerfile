@@ -24,7 +24,7 @@ RUN go build \
     && /usr/local/bin/upx -9 kube-ns-suspender
 
 
-FROM gcr.io/distroless/base-debian10
+FROM gcr.io/distroless/base-debian11
 
 WORKDIR /app
 
