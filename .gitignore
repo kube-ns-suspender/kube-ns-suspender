@@ -6,3 +6,4 @@
 out/
 tools/bin/
 tmp/
+vendor/

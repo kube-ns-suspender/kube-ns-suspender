@@ -156,6 +156,11 @@ asdf: ## Installs the configured `asdf` plugins and enables the configured versi
 	@asdf reshim
 	@echo "Done!"
 
+.PHONY: fetch-deps
+fetch-deps:
+	rm -rf vendor
+	go mod vendor
+
 .PHONY: display-image-name
 display-image-name:
 	@echo ${IMAGE}

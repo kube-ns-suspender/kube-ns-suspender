@@ -69,7 +69,7 @@ pipeline {
                     git config --global credential.helper "!echo password=\${GPASS}; echo"
 
                     make asdf
-
+                    make fetch-deps
                     make docker-build
                     docker tag kube-ns-suspender $ImageFull 
                     docker tag kube-ns-suspender $ImageLatest
