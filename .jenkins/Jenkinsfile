@@ -81,7 +81,7 @@ pipeline {
         } // end of container
       } //end of steps
     } // stage - build
-
+/* -- test stage disabled
     stage('test') {
       when {
         beforeAgent true
@@ -97,7 +97,7 @@ pipeline {
         }
       } // steps
     } // stage - test
-
+*/
     stage('security') {
       stages {
         stage('prisma') {
