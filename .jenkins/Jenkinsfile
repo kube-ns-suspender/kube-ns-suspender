@@ -68,6 +68,8 @@ pipeline {
                     git config --global credential.username \${GUSER}
                     git config --global credential.helper "!echo password=\${GPASS}; echo"
 
+                    asdflocal
+
                     make docker-build
                     docker tag kube-ns-suspender $ImageFull 
                     docker tag kube-ns-suspender $ImageLatest
