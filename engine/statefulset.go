@@ -15,19 +15,28 @@ func checkRunningStatefulsetsConformity(ctx context.Context, l zerolog.Logger, s
 	hasBeenPatched := false
 	for _, ss := range statefulsets {
 		repl := int(*ss.Spec.Replicas)
+		// if the current number of replicas is 0, we want to evaluate whether to scale back up to the original replicas
 		if repl == 0 {
+			// if no originalReplicas annotation is found, we assume the desired replicas is 0 to handle a statefulset scaled to 0
+			desiredRepl := 0
+			var err error
 			// get the desired number of replicas
-			repl, err := strconv.Atoi(ss.Annotations[prefix+originalReplicas])
-			if err != nil {
-				return hasBeenPatched, err
+			if ss.Annotations != nil {
+				if val, ok := ss.Annotations[prefix+originalReplicas]; ok {
+					desiredRepl, err = strconv.Atoi(val)
+					if err != nil {
+						return hasBeenPatched, err
+					}
+				}
 			}
-
-			l.Info().Str("statefulset", ss.Name).Msgf("scaling %s from 0 to %d replicas", ss.Name, repl)
-			// patch the statefulset
-			if err := patchStatefulsetReplicas(ctx, cs, ns, ss.Name, prefix, repl); err != nil {
-				return hasBeenPatched, err
+			if desiredRepl != 0 {
+				l.Info().Str("statefulset", ss.Name).Msgf("scaling %s from 0 to %d replicas", ss.Name, desiredRepl)
+				// patch the statefulset
+				if err := patchStatefulsetReplicas(ctx, cs, ns, ss.Name, prefix, desiredRepl); err != nil {
+					return hasBeenPatched, err
+				}
+				hasBeenPatched = true
 			}
-			hasBeenPatched = true
 		}
 	}
 	return hasBeenPatched, nil
@@ -65,6 +74,10 @@ func patchStatefulsetReplicas(ctx context.Context, cs *kubernetes.Clientset, ns,
 				result.Annotations = make(map[string]string)
 			}
 			result.Annotations[prefix+originalReplicas] = strconv.Itoa(int(*result.Spec.Replicas))
+		} else {
+			// we are unsuspending the namespace, so clear the originalReplicas so that the
+			// statefulset is allowed to scale back to 0
+			delete(result.Annotations, prefix+originalReplicas)
 		}
 		result.Spec.Replicas = flip(int32(repl))
 		_, err = cs.AppsV1().StatefulSets(ns).Update(ctx, result, metav1.UpdateOptions{})
