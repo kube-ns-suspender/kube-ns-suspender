@@ -146,7 +146,7 @@ pipeline {
       steps {
         container('build') {
             sshagent(credentials: ['github-key']) {
-              git credentialsId: 'github-key', url: 'git@github.com:cogitocorp/kube-ns-suspender.git', poll: false
+              git credentialsId: 'github-key', url: 'git@github.com:cogitocorp/kube-ns-suspender.git', poll: false, branch: cogito-build
               sh 'git config user.name "jenkins-cogito"'
               sh 'git config user.email "tools-team@cogitocorp.com"'
               sh "git tag ${prebuildResult.imageTag}"
