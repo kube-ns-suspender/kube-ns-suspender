@@ -144,12 +144,14 @@ pipeline {
     stage('push tags') {
       when { branch 'cogito-build' }
       steps {
-        sshagent(credentials: ['github-key']) {
-          git credentialsId: 'github-key', url: 'git@github.com:cogitocorp/kube-ns-suspender.git', poll: false
-          sh 'git config user.name "jenkins-cogito"'
-          sh 'git config user.email "tools-team@cogitocorp.com"'
-          sh "git tag ${prebuildResult.imageTag}"
-          sh 'git push origin --tags'
+        container('build') {
+            sshagent(credentials: ['github-key']) {
+              git credentialsId: 'github-key', url: 'git@github.com:cogitocorp/kube-ns-suspender.git', poll: false
+              sh 'git config user.name "jenkins-cogito"'
+              sh 'git config user.email "tools-team@cogitocorp.com"'
+              sh "git tag ${prebuildResult.imageTag}"
+              sh 'git push origin --tags'
+            }
         }
       }
     } // stage - push tags
