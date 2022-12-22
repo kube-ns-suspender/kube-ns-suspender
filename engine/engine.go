@@ -53,6 +53,7 @@ type Options struct {
 	PProfAddr                 string
 	SlackChannelName          string
 	SlackChannelLink          string
+	KedaEnabled               bool
 }
 
 // New returns a new engine instance

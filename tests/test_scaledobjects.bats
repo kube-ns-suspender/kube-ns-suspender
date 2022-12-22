@@ -69,11 +69,11 @@ setup() {
 #
 # === Pre-suspend
 #
-@test "${BATS_TEST_FILENAME} - cronjobs - check if cronjobs are not suspended" {
-    run kubectl -n ${DETIK_CLIENT_NAMESPACE} get cronjobs.batch hello -o jsonpath="{.spec.suspend}"
+@test "${BATS_TEST_FILENAME} - scaledobjects - check if scaledobjects are not suspended" {
+    run kubectl -n ${DETIK_CLIENT_NAMESPACE} get scaledobjects misc-scaledobject -o jsonpath="{.metadata.annotations.autoscaling\.keda\.sh/paused-replicas}"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
-    [ "$output" == "false" ]
+    [ "$output" == "" ]
 }
 
 # === Suspend
@@ -95,10 +95,10 @@ setup() {
 
 # === Post-suspend
 #
-@test "${BATS_TEST_FILENAME} - cronjobs - check if cronjobs are suspended" {
+@test "${BATS_TEST_FILENAME} - scaledobjects - check if scaledobjects are paused" {
     run try "at most 6 times every 10s \
-            to get cronjobs named 'hello' \
-            and verify that '.spec.suspend' is 'true'"
+            to get scaledobjects named 'misc-scaledobject' \
+            and verify that '.metadata.annotations.autoscaling\.keda\.sh/paused-replicas' is '0'"
 
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
@@ -114,10 +114,10 @@ setup() {
 
 # === Post-unsuspend
 #
-@test "${BATS_TEST_FILENAME} - cronjobs - check if cronjobs are not suspended after resuming namespace" {
+@test "${BATS_TEST_FILENAME} - scaledobjects - check if scaledobjects are not suspended after resuming namespace" {
     run try "at most 6 times every 10s \
-            to get cronjobs named 'hello' \
-            and verify that '.spec.suspend' is 'false'"
+            to get scaledobjects named 'misc-scaledobject' \
+            and verify that '.metadata.annotations.autoscaling\.keda\.sh/paused-replicas' is '<none>'"
 
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
