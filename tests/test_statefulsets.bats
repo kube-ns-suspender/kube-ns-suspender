@@ -125,6 +125,73 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+# Scaled to 0 test case
+# === Pre-suspend
+#
+
+@test "${BATS_TEST_FILENAME} - init - scaled to 0 - scale web to 0" {
+    run kubectl -n kube-ns-suspender-testing-namespace scale --replicas=0 statefulset/web
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+@test "${BATS_TEST_FILENAME} - statefulsets - scaled to 0 - check if pods 'web-*' have 0 replicas up and running" {
+    run try "at most 12 times every 10s \
+            to find 0 pod named 'web' \
+            with 'status' being 'running'" 
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+@test "${BATS_TEST_FILENAME} - statefulsets - scaled to 0 - check the number of replicas (there should be 0)" {
+    run verify "there are 0 pods named 'web-*'"
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+# suspend the namespace
+@test "${BATS_TEST_FILENAME} - action - scaled to 0 - update the testing namespace to be suspended in the following minute" {
+    run kubectl annotate --overwrite \
+            ns kube-ns-suspender-testing-namespace \
+            kube-ns-suspender/desiredState=Suspended
+    [ "$status" -eq 0 ]
+}
+
+# === Post-suspend
+#
+@test "${BATS_TEST_FILENAME} - statefulsets - scaled to 0 - check if pods 'web-*' have 0 replicas post-suspend" {
+    run try "at most 12 times every 10s \
+            to find 0 pod named 'web' \
+            with 'status' being 'running'" 
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+# unsuspend the namespace
+@test "${BATS_TEST_FILENAME} - action - scaled to 0 - unsuspend the namespace" {
+    run kubectl annotate --overwrite \
+        ns kube-ns-suspender-testing-namespace \
+        kube-ns-suspender/desiredState=Running
+    [ "$status" -eq 0 ]
+}
+
+# === Post-unsuspend
+#
+
+@test "${BATS_TEST_FILENAME} - statefulsets - scaled to 0 - check if pods 'web-*' have 0 replicas post-unsuspend" {
+    run try "at most 12 times every 10s \
+            to find 0 pod named 'web' \
+            with 'status' being 'running'" 
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+@test "${BATS_TEST_FILENAME} - statefulsets - scaled to 0 - check if the number of replicas is back to original" {
+    run verify "there are 0 pods named 'web-*'"
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
 teardown() {
     [ -n "$BATS_TEST_COMPLETED" ] || touch ${BATS_PARENT_TMPNAME}.skip
 }
