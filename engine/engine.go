@@ -62,7 +62,7 @@ func New(opt Options) (*Engine, error) {
 	var err error
 
 	if opt.WatchListSize < 1 {
-		return nil, errors.New("watchlist size cannot be lower than 1. A default value of 512 is adviced")
+		return nil, errors.New("watchlist size cannot be lower than 1. A default value of 512 is advised")
 	}
 
 	e := Engine{
