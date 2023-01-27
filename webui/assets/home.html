@@ -46,7 +46,7 @@
       </tr>
       {{range .NamespacesList.Namespaces}}
         <tr>
-          <td style="text-align: center;"><code>{{.Name}}</code></td>
+          <td><code>{{.Name}}</code></td>
           <td style="text-align: center;">
             {{if eq .State "Running"}}
             <span class="badge badge-pill badge-info">{{.State}}</span>
