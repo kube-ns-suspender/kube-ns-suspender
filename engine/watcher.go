@@ -16,6 +16,7 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 	for {
 		eng.Mutex.Lock()
 		wLogger := eng.Logger.With().Str("routine", "watcher").Int("inventory_id", id).Logger()
+		wLogger.Trace().Msg("engine mutex is locked")
 
 		start := time.Now()
 		wLogger.Debug().Msg("starting new namespaces inventory")
@@ -28,15 +29,19 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		// create fresh new variables for metrics
 		var wllen, runningNs, suspendedNs, unknownNs int
 
-		// look for new namespaces to watch
-		wLogger.Debug().Msgf("parsing namespaces list")
+		wLogger.Debug().Msgf("iterating over namespaces list")
 		for _, n := range ns.Items {
 			if value, ok := n.Annotations[eng.Options.Prefix+ControllerName]; ok {
-				wLogger.Debug().Msgf("found annotation '%s'", eng.Options.Prefix+ControllerName)
+				// this new sublogger will contain the namespace name in a string field, as this info is
+				// currently missing but is useful
+				watcherSubLogger := wLogger.With().Str("namespace", n.Name).Logger()
+
+				watcherSubLogger.Debug().Msgf("found annotation '%s'", eng.Options.Prefix+ControllerName)
 				if value == eng.Options.ControllerName {
+					watcherSubLogger.Debug().Msgf("annotation '%s: %s' matches controller name (%s)",
+						eng.Options.Prefix+ControllerName, value, eng.Options.ControllerName)
 					eng.Wl <- n
-					wLogger.Debug().Msgf("annotation '%s' matches controller name (%s)", eng.Options.Prefix+ControllerName, eng.Options.ControllerName)
-					wLogger.Debug().Msgf("namespace %s sent to suspender", n.Name)
+					watcherSubLogger.Debug().Msgf("namespace %s sent to suspender", n.Name)
 					wllen++
 
 					// try to get the desiredState annotation
@@ -51,7 +56,7 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 							unknownNs++
 						}
 					} else {
-						wLogger.Warn().Msgf("annotation '%s' not found", eng.Options.Prefix+DesiredState)
+						watcherSubLogger.Warn().Msgf("annotation '%s' not found", eng.Options.Prefix+DesiredState)
 					}
 				}
 			}
@@ -71,6 +76,7 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		eng.MetricsServ.NumUnknownNamespaces.Set(float64(unknownNs))
 
 		eng.Mutex.Unlock()
+		wLogger.Trace().Msg("engine mutex is unlocked")
 
 		// Question: Why not add `Int("inventory_id", id)` to every log line ?
 		wLogger.Debug().Msg("namespaces inventory ended")

@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"os"
 	"sync"
 	"time"
@@ -43,6 +44,7 @@ type Engine struct {
 
 type Options struct {
 	WatcherIdle               int
+	WatchListSize             int
 	RunningDuration           string
 	LogLevel                  string
 	TZ                        string
@@ -58,9 +60,14 @@ type Options struct {
 // New returns a new engine instance
 func New(opt Options) (*Engine, error) {
 	var err error
+
+	if opt.WatchListSize < 1 {
+		return nil, errors.New("watchlist size cannot be lower than 1. If in doubt, please use default value")
+	}
+
 	e := Engine{
 		Logger:  zerolog.New(os.Stderr).With().Timestamp().Logger(),
-		Wl:      make(chan v1.Namespace, 50),
+		Wl:      make(chan v1.Namespace, opt.WatchListSize),
 		Options: opt,
 	}
 
