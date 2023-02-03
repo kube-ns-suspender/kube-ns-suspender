@@ -68,7 +68,7 @@ setup() {
 #
 # === Pre-suspend
 #
-@test "${BATS_TEST_FILENAME} - cronjobs - check if cronjobs are not suspended" {
+@test "${BATS_TEST_FILENAME} - cronjobs batchv1beta - check if cronjobs are not suspended" {
     run kubectl -n ${DETIK_CLIENT_NAMESPACE} get cronjobs.batch hello -o jsonpath="{.spec.suspend}"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
@@ -94,7 +94,7 @@ setup() {
 
 # === Post-suspend
 #
-@test "${BATS_TEST_FILENAME} - cronjobs - check if cronjobs are suspended" {
+@test "${BATS_TEST_FILENAME} - cronjobs batchv1beta - check if cronjobs are suspended" {
     run try "at most 6 times every 10s \
             to get cronjobs named 'hello-v1beta' \
             and verify that '.spec.suspend' is 'true'"
@@ -113,7 +113,7 @@ setup() {
 
 # === Post-unsuspend
 #
-@test "${BATS_TEST_FILENAME} - cronjobs - check if cronjobs are not suspended after resuming namespace" {
+@test "${BATS_TEST_FILENAME} - cronjobs batchv1beta - check if cronjobs are not suspended after resuming namespace" {
     run try "at most 6 times every 10s \
             to get cronjobs named 'hello-v1beta' \
             and verify that '.spec.suspend' is 'false'"
