@@ -67,7 +67,29 @@ spec:
         ports:
         - containerPort: 80
 ---
-apiVersion: batch/v1beta1
+apiVersion: batch/v1beta
+kind: CronJob
+metadata:
+  name: hello-v1beta
+  namespace: kube-ns-suspender-testing-namespace
+spec:
+  suspend: false
+  schedule: "*/3 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: hello
+            image: busybox
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - date; echo Hello from the Kubernetes cluster; sleep 120
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: hello
