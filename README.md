@@ -165,9 +165,7 @@ Since version `v2.1.0`, you can both suspend and unsuspend a namespace from the 
 <details>
 <summary>Click to see some screenshots</summary>
 
-![Namespaces list with suspended namespace](docs/images/screenshots/home.png)
-
-![Namespaces list with running namespace](docs/images/screenshots/home-running.png)
+![Namespaces list with suspended and running namespace](docs/images/screenshots/home.png)
 
 ![Report a bug](docs/images/screenshots/bug.png)
 
