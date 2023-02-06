@@ -162,9 +162,10 @@ jobs:
         run: |
           echo "---> DETIK logs"
           cp -va /tmp/detik tmp/
+          cat tmp/*.log tmp/*.debug
           echo "---> KIND logs"
           mkdir -vp tmp/kind
-          kind export logs tmp/kind/ && cat tmp/kind/*
+          kind export logs tmp/kind/
 
       - name: Archive test logs
         if: ${{ always() }}
