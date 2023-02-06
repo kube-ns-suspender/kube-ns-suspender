@@ -70,8 +70,9 @@ func (s *Server) Start() error {
 
 // goroutine to update the Uptime metric
 func (s *Server) uptimeCounter() {
+	start := time.Now()
 	for {
-		s.Uptime.Add(5)
+		s.Uptime.Set(time.Since(start).Seconds())
 		time.Sleep(5 * time.Second)
 	}
 }
