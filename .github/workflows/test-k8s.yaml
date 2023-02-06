@@ -164,7 +164,7 @@ jobs:
           cp -va /tmp/detik tmp/
           echo "---> KIND logs"
           mkdir -vp tmp/kind
-          kind export logs tmp/kind/
+          kind export logs tmp/kind/ && cat tmp/kind/*
 
       - name: Archive test logs
         if: ${{ always() }}
