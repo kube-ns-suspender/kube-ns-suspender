@@ -1,4 +1,4 @@
-FROM devopsworks/golang-upx:1.17 AS builder
+FROM devopsworks/golang-upx:1.18 AS builder
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
