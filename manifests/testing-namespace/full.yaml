@@ -80,7 +80,7 @@ spec:
       template:
         spec:
           containers:
-          - name: hello
+          - name: hello-v1beta
             image: busybox
             imagePullPolicy: IfNotPresent
             command:
