@@ -4,4 +4,4 @@ name: kns-test
 nodes:
 # one node cluster
 - role: control-plane
-  image: kindest/node:v1.22.0
+  image: kindest/node:v1.23.4
