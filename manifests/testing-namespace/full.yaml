@@ -67,7 +67,7 @@ spec:
         ports:
         - containerPort: 80
 ---
-apiVersion: batch/v1beta
+apiVersion: batch/v1beta1
 kind: CronJob
 metadata:
   name: hello-v1beta
