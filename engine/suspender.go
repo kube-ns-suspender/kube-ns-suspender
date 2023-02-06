@@ -247,7 +247,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			sLogger.Debug().Str("step", stepName).Msg("checking suspended Conformity")
 			// the checks will be done concurrently to optimise verification duration
 			var wg sync.WaitGroup
-			wg.Add(3)
+			wg.Add(4)
 
 			// check and patch deployments
 			sLogger.Debug().Str("step", stepName).Str("resource", "deployments").Msg("checking suspended Conformity")
@@ -321,7 +321,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset) {
 			var patchedResourcesCounter int
 
 			sLogger.Debug().Str("step", stepName).Msgf("namespace is seen as being '%s'", dState)
-			wg.Add(3)
+			wg.Add(4)
 
 			sLogger.Debug().Str("step", stepName).Msg("checking running conformity")
 
