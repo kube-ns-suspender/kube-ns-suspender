@@ -46,7 +46,7 @@ func main() {
 	fs.StringVar(&opt.SlackChannelName, "slack-channel-name", "", "Name of the help Slack channel in the UI bug page")
 	fs.StringVar(&opt.SlackChannelLink, "slack-channel-link", "", "Link of the helm Slack channel in the UI bug page")
 	fs.IntVar(&opt.WatchListSize, "watchlist-size", 512, "Size of the watchlist containing namespaces waiting to be handled")
-  fs.BoolVar(&opt.KedaEnabled, "keda-enabled", false, "Enable pausing of Keda.sh scaledobjects")
+	fs.BoolVar(&opt.KedaEnabled, "keda-enabled", false, "Enable pausing of Keda.sh scaledobjects")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}
