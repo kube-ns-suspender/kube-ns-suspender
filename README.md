@@ -1,5 +1,7 @@
 # kube-ns-suspender
 
+[![E2E k8S tests](https://github.com/govirtuo/kube-ns-suspender/actions/workflows/test-k8s.yaml/badge.svg?branch=main)](https://github.com/govirtuo/kube-ns-suspender/actions/workflows/test-k8s.yaml)
+
 <img align="center" src="./docs/images/kube-ns-suspender.png" width="335" height="228"/>
 
 Kubernetes controller managing namespaces life cycle.
