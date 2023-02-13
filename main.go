@@ -45,6 +45,7 @@ func main() {
 	fs.StringVar(&opt.PProfAddr, "pprof-addr", ":4455", "Address and port to use with pprof")
 	fs.StringVar(&opt.SlackChannelName, "slack-channel-name", "", "Name of the help Slack channel in the UI bug page")
 	fs.StringVar(&opt.SlackChannelLink, "slack-channel-link", "", "Link of the helm Slack channel in the UI bug page")
+	fs.IntVar(&opt.WatchListSize, "watchlist-size", 512, "Size of the watchlist containing namespaces waiting to be handled")
 	fs.BoolVar(&opt.KedaEnabled, "keda-enabled", false, "Enable pausing of Keda.sh scaledobjects")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
@@ -93,6 +94,7 @@ func main() {
 
 	eng.Logger.Debug().Msgf("timezone: %s", time.Local.String())
 	eng.Logger.Debug().Msgf("watcher idle: %s", time.Duration(eng.Options.WatcherIdle)*time.Second)
+	eng.Logger.Debug().Msgf("watchlist size: %d", eng.Options.WatchListSize)
 	eng.Logger.Debug().Msgf("running duration: %s", eng.RunningDuration)
 	eng.Logger.Debug().Msgf("log level: %s", eng.Options.LogLevel)
 	eng.Logger.Debug().Msgf("json logging: %v", !eng.Options.HumanLogs)

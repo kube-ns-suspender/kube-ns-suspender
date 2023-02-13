@@ -1,5 +1,7 @@
 # kube-ns-suspender
 
+[![E2E k8S tests](https://github.com/govirtuo/kube-ns-suspender/actions/workflows/test-k8s.yaml/badge.svg?branch=main)](https://github.com/govirtuo/kube-ns-suspender/actions/workflows/test-k8s.yaml)
+
 <img align="center" src="./docs/images/kube-ns-suspender.png" width="335" height="228"/>
 
 Kubernetes controller managing namespaces life cycle.
@@ -70,23 +72,24 @@ The suspender function does all the work of reading namespaces/resources annotat
 
 ### Flags
 
-| Flag                   | Description                                       |      Default      | Environment variable                   |
-| ---------------------- | ------------------------------------------------- | :---------------: | -------------------------------------- |
-| `--controller-name`    | Unique name of the controller                     | kube-ns-suspender | `KUBE_NS_SUSPENDER_CONTROLLER_NAME`    |
-| `--human`              | Disable JSON logging                              |       false       | `KUBE_NS_SUSPENDER_HUMAN`              |
-| `--log-level`          | Log level                                         |       debug       | `KUBE_NS_SUSPENDER_LOG_LEVEL`          |
-| `--no-kube-warnings`   | Disable Kubernetes warnings                       |       false       | `KUBE_NS_SUSPENDER_NO_KUBE_WARNINGS`   |
-| `--pprof`              | Start pprof server                                |       false       | `KUBE_NS_SUSPENDER_PPROF`              |
-| `--pprof-addr`         | Address and port to use with pprof                |       :4455       | `KUBE_NS_SUSPENDER_PPROF_ADDR`         |
-| `--prefix`             | Prefix to use for annotations                     | kube-ns-suspender | `KUBE_NS_SUSPENDER_PREFIX`             |
-| `--running-duration`   | Running duration                                  |        4h         | `KUBE_NS_SUSPENDER_RUNNING_DURATION`   |
-| `--slack-channel-link` | Link of the help Slack channel in the UI bug page |        ""         | `KUBE_NS_SUSPENDER_SLACK_CHANNEL_LINK` |
-| `--slack-channel-name` | Name of the help Slack channel in the UI bug page |        ""         | `KUBE_NS_SUSPENDER_SLACK_CHANNEL_NAME` |
-| `--timezone`           | Timezone to use                                   |   Europe/Paris    | `KUBE_NS_SUSPENDER_TIMEZONE`           |
-| `--ui-embedded`        | Start UI in background                            |       false       | `KUBE_NS_SUSPENDER_UI_EMBEDDED`        |
-| `--ui-only`            | Start UI only                                     |       false       | `KUBE_NS_SUSPENDER_UI_ONLY`            |
-| `--watcher-idle`       | Watcher idle duration in seconds                  |        15         | `KUBE_NS_SUSPENDER_WATCHER_IDLE`       |
-| `--keda-enabled`       | Enable pausing of Keda.sh ScaledObjects           |       false       | `KUBE_NS_SUSPENDER_KEDA_ENABLED`       |
+| Flag                   | Description                                                       |      Default      | Environment variable                   |
+| ---------------------- | ----------------------------------------------------------------- | :---------------: | -------------------------------------- |
+| `--controller-name`    | Unique name of the controller                                     | kube-ns-suspender | `KUBE_NS_SUSPENDER_CONTROLLER_NAME`    |
+| `--human`              | Disable JSON logging                                              |       false       | `KUBE_NS_SUSPENDER_HUMAN`              |
+| `--log-level`          | Log level                                                         |       debug       | `KUBE_NS_SUSPENDER_LOG_LEVEL`          |
+| `--no-kube-warnings`   | Disable Kubernetes warnings                                       |       false       | `KUBE_NS_SUSPENDER_NO_KUBE_WARNINGS`   |
+| `--pprof`              | Start pprof server                                                |       false       | `KUBE_NS_SUSPENDER_PPROF`              |
+| `--pprof-addr`         | Address and port to use with pprof                                |       :4455       | `KUBE_NS_SUSPENDER_PPROF_ADDR`         |
+| `--prefix`             | Prefix to use for annotations                                     | kube-ns-suspender | `KUBE_NS_SUSPENDER_PREFIX`             |
+| `--running-duration`   | Running duration                                                  |        4h         | `KUBE_NS_SUSPENDER_RUNNING_DURATION`   |
+| `--slack-channel-link` | Link of the help Slack channel in the UI bug page                 |        ""         | `KUBE_NS_SUSPENDER_SLACK_CHANNEL_LINK` |
+| `--slack-channel-name` | Name of the help Slack channel in the UI bug page                 |        ""         | `KUBE_NS_SUSPENDER_SLACK_CHANNEL_NAME` |
+| `--timezone`           | Timezone to use                                                   |   Europe/Paris    | `KUBE_NS_SUSPENDER_TIMEZONE`           |
+| `--ui-embedded`        | Start UI in background                                            |       false       | `KUBE_NS_SUSPENDER_UI_EMBEDDED`        |
+| `--ui-only`            | Start UI only                                                     |       false       | `KUBE_NS_SUSPENDER_UI_ONLY`            |
+| `--watcher-idle`       | Watcher idle duration in seconds                                  |        15         | `KUBE_NS_SUSPENDER_WATCHER_IDLE`       |
+| `--watchlist-size`     | Size of the watchlist containing namespaces waiting to be handled |        512        | `KUBE_NS_SUSPENDER_WATCHLIST_SIZE`     |
+| `--keda-enabled`       | Enable pausing of Keda.sh ScaledObjects                           |       false       | `KUBE_NS_SUSPENDER_KEDA_ENABLED`       |
 
 ### Resources
 
@@ -171,9 +174,7 @@ Since version `v2.1.0`, you can both suspend and unsuspend a namespace from the 
 <details>
 <summary>Click to see some screenshots</summary>
 
-![Namespaces list with suspended namespace](docs/images/screenshots/home.png)
-
-![Namespaces list with running namespace](docs/images/screenshots/home-running.png)
+![Namespaces list with suspended and running namespace](docs/images/screenshots/home.png)
 
 ![Report a bug](docs/images/screenshots/bug.png)
 
