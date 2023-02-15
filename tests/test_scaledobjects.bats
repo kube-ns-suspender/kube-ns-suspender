@@ -69,17 +69,19 @@ setup() {
 #
 # === Pre-suspend
 #
-@test "${BATS_TEST_FILENAME} - statefulsets - check if pods 'web' are up and running (wait max 6x10s)" {
-    run try "at most 6 times every 10s \
-            to get pods named 'web' \
-            and verify that 'status' is 'running'"
+@test "${BATS_TEST_FILENAME} - scaledobjects - check if scaledobjects are not suspended" {
+    run kubectl -n ${DETIK_CLIENT_NAMESPACE} get scaledobjects misc-scaledobject -o jsonpath="{.metadata.annotations.autoscaling\.keda\.sh/paused-replicas}"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
+    [ "$output" == "" ]
 }
 
-@test "${BATS_TEST_FILENAME} - statefulsets - check the number of replicas (there should be 3)" {
-    run verify "there are 3 pods named 'web'"
-    debug "Command output is: $output"
+# === Suspend
+#
+@test "${BATS_TEST_FILENAME} - onboard the testing namespace with 'controllerName' annotation" {
+    run kubectl annotate --overwrite \
+            ns kube-ns-suspender-testing-namespace \
+            kube-ns-suspender/controllerName=kube-ns-suspender
     [ "$status" -eq 0 ]
 }
 
@@ -93,10 +95,11 @@ setup() {
 
 # === Post-suspend
 #
-@test "${BATS_TEST_FILENAME} - statefulsets - check if pods 'web' have 0 replicas up and running" {
-    run try "at most 12 times every 10s \
-            to find 0 pod named 'web' \
-            with 'status' being 'running'" 
+@test "${BATS_TEST_FILENAME} - scaledobjects - check if scaledobjects are paused" {
+    run try "at most 6 times every 10s \
+            to get scaledobjects named 'misc-scaledobject' \
+            and verify that '.metadata.annotations.autoscaling\.keda\.sh/paused-replicas' is '0'"
+
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
@@ -111,83 +114,11 @@ setup() {
 
 # === Post-unsuspend
 #
-@test "${BATS_TEST_FILENAME} - statefulset - check if pods are up and running again" {
-    run try "at most 12 times every 10s \
-            to get pods named 'web' \
-            and verify that 'status' is 'running'"
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
+@test "${BATS_TEST_FILENAME} - scaledobjects - check if scaledobjects are not suspended after resuming namespace" {
+    run try "at most 6 times every 10s \
+            to get scaledobjects named 'misc-scaledobject' \
+            and verify that '.metadata.annotations.autoscaling\.keda\.sh/paused-replicas' is '<none>'"
 
-@test "${BATS_TEST_FILENAME} - statefulset - check if the number of replicas is back to original" {
-    run verify "there are 3 pods named 'web'"
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
-
-# Scaled to 0 test case
-# === Pre-suspend
-#
-
-@test "${BATS_TEST_FILENAME} - init - scaled to 0 - scale web to 0" {
-    run kubectl -n kube-ns-suspender-testing-namespace scale --replicas=0 statefulset/web
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
-
-@test "${BATS_TEST_FILENAME} - statefulsets - scaled to 0 - check if pods 'web-*' have 0 replicas up and running" {
-    run try "at most 12 times every 10s \
-            to find 0 pod named 'web' \
-            with 'status' being 'running'" 
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
-
-@test "${BATS_TEST_FILENAME} - statefulsets - scaled to 0 - check the number of replicas (there should be 0)" {
-    run verify "there are 0 pods named 'web-*'"
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
-
-# suspend the namespace
-@test "${BATS_TEST_FILENAME} - action - scaled to 0 - update the testing namespace to be suspended in the following minute" {
-    run kubectl annotate --overwrite \
-            ns kube-ns-suspender-testing-namespace \
-            kube-ns-suspender/desiredState=Suspended
-    [ "$status" -eq 0 ]
-}
-
-# === Post-suspend
-#
-@test "${BATS_TEST_FILENAME} - statefulsets - scaled to 0 - check if pods 'web-*' have 0 replicas post-suspend" {
-    run try "at most 12 times every 10s \
-            to find 0 pod named 'web' \
-            with 'status' being 'running'" 
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
-
-# unsuspend the namespace
-@test "${BATS_TEST_FILENAME} - action - scaled to 0 - unsuspend the namespace" {
-    run kubectl annotate --overwrite \
-        ns kube-ns-suspender-testing-namespace \
-        kube-ns-suspender/desiredState=Running
-    [ "$status" -eq 0 ]
-}
-
-# === Post-unsuspend
-#
-
-@test "${BATS_TEST_FILENAME} - statefulsets - scaled to 0 - check if pods 'web-*' have 0 replicas post-unsuspend" {
-    run try "at most 12 times every 10s \
-            to find 0 pod named 'web' \
-            with 'status' being 'running'" 
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
-
-@test "${BATS_TEST_FILENAME} - statefulsets - scaled to 0 - check if the number of replicas is back to original" {
-    run verify "there are 0 pods named 'web-*'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }

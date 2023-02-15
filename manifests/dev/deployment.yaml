@@ -25,3 +25,6 @@ spec:
           containerPort: 8080
         - name: pprof
           containerPort: 4455
+        env:
+        - name: KUBE_NS_SUSPENDER_KEDA_ENABLED
+          value: "true"

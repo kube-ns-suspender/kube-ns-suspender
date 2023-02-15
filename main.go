@@ -11,6 +11,7 @@ import (
 	"github.com/govirtuo/kube-ns-suspender/metrics"
 	"github.com/govirtuo/kube-ns-suspender/pprof"
 	"github.com/govirtuo/kube-ns-suspender/webui"
+	"github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
 	"github.com/rs/zerolog/log"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -45,6 +46,7 @@ func main() {
 	fs.StringVar(&opt.SlackChannelName, "slack-channel-name", "", "Name of the help Slack channel in the UI bug page")
 	fs.StringVar(&opt.SlackChannelLink, "slack-channel-link", "", "Link of the helm Slack channel in the UI bug page")
 	fs.IntVar(&opt.WatchListSize, "watchlist-size", 512, "Size of the watchlist containing namespaces waiting to be handled")
+	fs.BoolVar(&opt.KedaEnabled, "keda-enabled", false, "Enable pausing of Keda.sh scaledobjects")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}
@@ -132,10 +134,23 @@ func main() {
 	}
 	eng.Logger.Info().Msgf("clientset successfully created in %s", time.Since(start))
 
+	// create the keda client
+	kedaclient := &v1alpha1.KedaV1alpha1Client{}
+	if eng.Options.KedaEnabled {
+		start = time.Now()
+		kedaclient, err = v1alpha1.NewForConfig(config)
+		if err != nil {
+			eng.Logger.Fatal().Err(err).Msg("cannot create the keda client")
+		}
+		eng.Logger.Info().Msgf("keda client successfully created in %s", time.Since(start))
+	} else {
+		eng.Logger.Info().Msg("keda is disabled")
+	}
+
 	eng.Logger.Info().Msgf("starting 'Watcher' and 'Suspender' routines")
 	ctx := context.Background()
 	go eng.Watcher(ctx, clientset)
-	go eng.Suspender(ctx, clientset)
+	go eng.Suspender(ctx, clientset, kedaclient)
 
 	// wait forever
 	select {}

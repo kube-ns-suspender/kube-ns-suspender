@@ -88,7 +88,8 @@ The suspender function does all the work of reading namespaces/resources annotat
 | `--ui-embedded`        | Start UI in background                                            |       false       | `KUBE_NS_SUSPENDER_UI_EMBEDDED`        |
 | `--ui-only`            | Start UI only                                                     |       false       | `KUBE_NS_SUSPENDER_UI_ONLY`            |
 | `--watcher-idle`       | Watcher idle duration in seconds                                  |        15         | `KUBE_NS_SUSPENDER_WATCHER_IDLE`       |
-| `--watchlist-size`     | Size of the watchlist containing namespaces waiting to be handled |        512        | `KUBE_NS_SUSPENDER_WATCHLIST_SIZE`       |
+| `--watchlist-size`     | Size of the watchlist containing namespaces waiting to be handled |        512        | `KUBE_NS_SUSPENDER_WATCHLIST_SIZE`     |
+| `--keda-enabled`       | Enable pausing of Keda.sh ScaledObjects                           |       false       | `KUBE_NS_SUSPENDER_KEDA_ENABLED`       |
 
 ### Resources
 
@@ -97,6 +98,7 @@ Currently supported resources are:
 * [deployments](#deployments-and-stateful-sets)
 * [stateful sets](#deployments-and-stateful-sets)
 * [cronjobs](#cronjobs)
+* [scaledobjects](#scaledobjects)
 
 ### States
 
@@ -149,6 +151,11 @@ As those resources have a `spec.replicas` value, they must have a `kube-ns-suspe
 ##### Cronjobs
 
 Cronjobs have a `spec.suspend` value that indicates if they must be runned or not. As this value is a boolean, **no other annotations are required**.
+
+##### ScaledObjects
+
+[Keda](keda.sh) ScaledObjects have a `autoscaling.keda.sh/paused-replicas` annotation that indicates whether to pause autoscaling.  Any value will [pause autoscaling](https://keda.sh/docs/2.8/concepts/scaling-deployments/#pause-autoscaling). This allows the controller replicas to be modified by the suspender without being overwritten by the Keda autoscaler.  When suspending a namespace, this annotation will be added to any keda.sh scaledobjects found in the namespace if running with
+`--keda-enabled`. Unsuspending will remove this annotation.
 
 ### Metrics
 

@@ -110,3 +110,21 @@ spec:
             - -c
             - date; echo Hello from the Kubernetes cluster; sleep 120
           restartPolicy: OnFailure
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  labels:
+    app: misc
+  name: misc-scaledobject
+  namespace: kube-ns-suspender-testing-namespace
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: misc-depl
+  triggers:
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "50"
