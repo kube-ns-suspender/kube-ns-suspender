@@ -60,8 +60,12 @@ setup() {
 }
 
 @test "${BATS_TEST_FILENAME} - init - deploy mock manifests" {
-    run kubectl apply -f manifests/testing-namespace/crds.yaml
     run kubectl apply -f manifests/testing-namespace/full.yaml
+    [ "$status" -eq 0 ]
+}
+
+@test "${BATS_TEST_FILENAME} - init - deploy mock CRDs" {
+    run kubectl apply -f manifests/testing-namespace/crds.yaml
     [ "$status" -eq 0 ]
 }
 
