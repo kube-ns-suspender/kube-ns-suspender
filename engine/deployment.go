@@ -46,6 +46,11 @@ func checkRunningDeploymentsConformity(ctx context.Context, l zerolog.Logger, de
 
 func checkSuspendedDeploymentsConformity(ctx context.Context, l zerolog.Logger, deployments []appsv1.Deployment, cs *kubernetes.Clientset, ns, prefix string) error {
 	for _, d := range deployments {
+		// if the resource has a '<prefix>/ignore: true' annotation, we just skip all the checks
+		if d.Annotations[prefix+ignoreScaling] == "true" {
+			l.Info().Str("deployment", d.Name).Msgf("annotation %s found, skipping any changes", prefix+ignoreScaling)
+			continue
+		}
 		repl := int(*d.Spec.Replicas)
 		if repl != 0 {
 			// TODO: what about fixing the annotation original Replicas here ?

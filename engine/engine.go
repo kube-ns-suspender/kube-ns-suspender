@@ -29,8 +29,9 @@ const (
 	DailySuspendTime = "dailySuspendTime"
 	DesiredState     = "desiredState"
 
-	// annotation used on resources (deployments, statefulsets...)
+	// annotations used on resources (deployments, statefulsets...)
 	originalReplicas = "originalReplicas"
+	ignoreScaling    = "ignore"
 )
 
 type Engine struct {
