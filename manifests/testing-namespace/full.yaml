@@ -140,7 +140,7 @@ metadata:
   labels:
     app: misc
   annotations:
-    kube-ns-suspender/ignore: true
+    kube-ns-suspender/ignore: "true"
 spec:
   replicas: 3
   selector:
