@@ -91,7 +91,7 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "${BATS_TEST_FILENAME} - deployments - check the number of replicas (there should be 3)" {
+@test "${BATS_TEST_FILENAME} - deployments - check the number of ignored replicas (there should be 3)" {
     run verify "there are 3 pods named 'ignore-misc-depl-*'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
@@ -185,7 +185,7 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check the number of replicas (there should be 0)" {
+@test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check the number of ignored replicas (there should be 0)" {
     run verify "there are 0 pods named 'ignore-misc-depl-*'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
@@ -250,7 +250,7 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check if the number of replicas is back to original" {
+@test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check if the number of ignored replicas is back to original" {
     run verify "there are 0 pods named 'ignore-misc-depl-*'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
