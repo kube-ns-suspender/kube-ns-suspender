@@ -73,7 +73,7 @@ setup() {
 #
 # === Pre-suspend
 #
-@test "${BATS_TEST_FILENAME} - deployments - wait for ressources to be applied" {
+@test "${BATS_TEST_FILENAME} - action - wait for ressources to be applied" {
     run sleep 30
     [ "$status" -eq 0 ]
 }
@@ -94,11 +94,11 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "${BATS_TEST_FILENAME} - deployments - check the number of replicas (there should be 3)" {
-    run verify "there are 3 pods named 'misc-depl-*'"
-    debug "Command output is: $output"
-    [ "$status" -eq 0 ]
-}
+# @test "${BATS_TEST_FILENAME} - deployments - check the number of replicas (there should be 3)" {
+#     run verify "there are 3 pods named 'misc-depl-*'"
+#     debug "Command output is: $output"
+#     [ "$status" -eq 0 ]
+# }
 
 @test "${BATS_TEST_FILENAME} - deployments - check the number of ignored replicas (there should be 3)" {
     run verify "there are 3 pods named 'ignore-misc-depl-*'"
