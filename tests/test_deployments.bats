@@ -73,6 +73,11 @@ setup() {
 #
 # === Pre-suspend
 #
+@test "${BATS_TEST_FILENAME} - deployments - wait for ressources to be applied" {
+    run sleep 30
+    [ "$status" -eq 0 ]
+}
+
 @test "${BATS_TEST_FILENAME} - deployments - check if pods 'misc-depl' are up and running (wait max 6x10s)" {
     run try "at most 6 times every 10s \
             to get pods named 'misc-depl' \

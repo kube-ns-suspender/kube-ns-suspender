@@ -138,21 +138,21 @@ metadata:
   name: ignore-misc-depl
   namespace: kube-ns-suspender-testing-namespace
   labels:
-    app: misc
+    app: ignore-misc
   annotations:
     kube-ns-suspender/ignore: "true"
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: misc
+      app: ignore-misc
   template:
     metadata:
       labels:
-        app: misc
+        app: ignore-misc
     spec:
       containers:
-        - name: misc
+        - name: ignore-misc
           image: nginx:latest
           ports:
             - containerPort: 80
