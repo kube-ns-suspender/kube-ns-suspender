@@ -23,6 +23,7 @@ Kubernetes controller managing namespaces life cycle.
         - [**desiredState**](#desiredstate)
         - [**nextSuspendTime**](#nextsuspendtime)
       - [On resources](#on-resources)
+        - [Common](#common)
         - [Deployments and Stateful Sets](#deployments-and-stateful-sets)
         - [Cronjobs](#cronjobs)
     - [Metrics](#metrics)
@@ -146,7 +147,9 @@ Annotations are employed to save the original state of a resource.
 
 ##### Common
 
-All the resources have a common annotation which is `kube-ns-suspender/ignore`. This annotation expects a boolean (`true` or `false`). When set to `true`, despite every other indications (namespace annotations etc.), the state of the resource will remain unchanged.
+All the resources have a common annotation which is `kube-ns-suspender/ignore`. This annotation expects a string which **must be** either 'true' or 'false'. When set to 'true', despite every other indications (namespace annotations etc.), the state of the resource will remain unchanged.
+
+In fact, any value other than 'true' will be considered as being 'false'.
 
 ##### Deployments and Stateful Sets
 
