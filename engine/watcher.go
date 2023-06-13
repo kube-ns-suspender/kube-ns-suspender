@@ -12,6 +12,10 @@ import (
 // watchlist if they have the 'kube-ns-suspender/DesiredState' set.
 func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 	eng.Logger.Info().Str("routine", "watcher").Msg("watcher started")
+	defer func() {
+		eng.Logger.Fatal().Str("routine", "watcher").Msg("watcher exited")
+	}()
+
 	var id int
 	for {
 		eng.Mutex.Lock()
