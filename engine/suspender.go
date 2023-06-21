@@ -3,7 +3,6 @@ package engine
 import (
 	"context"
 	"errors"
-	"sync"
 	"time"
 
 	kedav1alpha1 "github.com/kedacore/keda/v2/apis/keda/v1alpha1"
@@ -16,7 +15,6 @@ import (
 // Suspender receives namespaces from Watcher and handles them. It means that
 // it will read and write namespaces' annotations, and scale resources.
 func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, kedacs *v1alpha1.KedaV1alpha1Client) {
-	eng.Mutex.Lock()
 	eng.Logger.Info().Str("routine", "suspender").Msg("suspender started")
 	defer func() {
 		eng.Logger.Fatal().Str("routine", "suspender").Msg("suspender exited")
@@ -24,14 +22,11 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 
 	var stepName string
 	for {
-		eng.Mutex.Unlock()
-
 		// wait for the next namespace to check
 		n := <-eng.Wl
 		start := time.Now()
 
 		// we create a sublogger to avoid "namespace" field duplication at each loop
-		eng.Mutex.Lock()
 		sLogger := eng.Logger.With().Str("routine", "suspender").Str("namespace", n.Name).Logger()
 		sLogger.Debug().Msg("namespace received from watcher")
 
@@ -105,7 +100,6 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 						Str("step", stepName).
 						Msgf("%s is less or equal to now (value: %d, now: %d), updating annotation '%s' to '%s'", eng.Options.Prefix+DailySuspendTime, suspendAt, now, eng.Options.Prefix+DesiredState, Suspended)
 
-					// NOTICE: Seems same content than L51-L69
 					if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 						sLogger.Trace().Str("step", stepName).Msgf("get namespace")
 						res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
@@ -260,59 +254,39 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 		switch dState {
 		case Suspended:
 			sLogger.Debug().Str("step", stepName).Msg("checking suspended Conformity")
-			// the checks will be done concurrently to optimise verification duration
-			var wg sync.WaitGroup
-			wg.Add(4)
 
 			// check and patch deployments
 			sLogger.Debug().Str("step", stepName).Str("resource", "deployments").Msg("checking suspended Conformity")
-			go func() {
-				if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.Prefix); err != nil {
-					sLogger.Error().Err(err).Str("object", "deployment").Msg("suspended conformity checks failed")
-				}
-				wg.Done()
-			}()
+			if err := checkSuspendedDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.Prefix); err != nil {
+				sLogger.Error().Err(err).Str("object", "deployment").Msg("suspended conformity checks failed")
+			}
 
 			// check and patch cronjobs
 			sLogger.Debug().Str("step", stepName).Str("resource", "cronjobs").Msg("checking suspended Conformity")
-			go func() {
-				if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
-					sLogger.Error().Err(err).Str("object", "cronjob").Msg("suspended cronjobs conformity checks failed")
-				}
-				wg.Done()
-			}()
+			if err := checkSuspendedCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name); err != nil {
+				sLogger.Error().Err(err).Str("object", "cronjob").Msg("suspended cronjobs conformity checks failed")
+			}
 
 			sLogger.Debug().Str("step", stepName).Str("resource", "cronjobs").Msg("checking suspended Conformity")
-			go func() {
-				if err := checkSuspendedCronjobsBetaConformity(ctx, sLogger, cronjobsBeta.Items, cs, n.Name); err != nil {
-					sLogger.Error().Err(err).Str("object", "cronjob").Msg("suspended cronjobs conformity checks failed")
-				}
-				wg.Done()
-			}()
+			if err := checkSuspendedCronjobsBetaConformity(ctx, sLogger, cronjobsBeta.Items, cs, n.Name); err != nil {
+				sLogger.Error().Err(err).Str("object", "cronjob").Msg("suspended cronjobs conformity checks failed")
+			}
 
 			// check and patch statefulsets
 			sLogger.Debug().Str("step", stepName).Str("resource", "statefulsets").Msg("checking suspended Conformity")
-			go func() {
-				if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.Prefix); err != nil {
-					sLogger.Error().Err(err).Str("object", "statefulset").Msg("suspended statefulsets conformity checks failed")
-				}
-				wg.Done()
-			}()
+			if err := checkSuspendedStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.Prefix); err != nil {
+				sLogger.Error().Err(err).Str("object", "statefulset").Msg("suspended statefulsets conformity checks failed")
+			}
 
 			if eng.Options.KedaEnabled {
-				wg.Add(1)
 				// check and patch scaledobjects
 				sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking suspended Conformity")
-				go func() {
-					if err := checkSuspendedScaledObjectsConformity(ctx, sLogger, scaledobjects.Items, kedacs, n.Name); err != nil {
-						sLogger.Error().Err(err).Str("object", "scaledobjects").Msg("suspended scaledobjects conformity checks failed")
-					}
-					wg.Done()
-				}()
+				if err := checkSuspendedScaledObjectsConformity(ctx, sLogger, scaledobjects.Items, kedacs, n.Name); err != nil {
+					sLogger.Error().Err(err).Str("object", "scaledobjects").Msg("suspended scaledobjects conformity checks failed")
+				}
 			}
-			// we wait for all the checks to be done
-			wg.Wait()
-			sLogger.Debug().Str("step", stepName).Msg("checking suspended Conformity done")
+
+			sLogger.Debug().Str("step", stepName).Msg("checking suspended conformity done")
 
 			// Cleaning-up annotations
 			sLogger.Debug().Str("step", stepName).Msgf("checking annotation '%s'", eng.Options.Prefix+NextSuspendTime)
@@ -344,88 +318,67 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			}
 
 		case Running:
-			var wg sync.WaitGroup
 			var patchedResourcesCounter int
 
 			sLogger.Debug().Str("step", stepName).Msgf("namespace is seen as being '%s'", dState)
-			wg.Add(4)
-
 			sLogger.Debug().Str("step", stepName).Msg("checking running conformity")
 
 			// check and patch deployments
 			sLogger.Debug().Str("step", stepName).Str("resource", "deployments").Msg("checking running conformity")
-			go func() {
-				hasBeenPatched, err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.Prefix)
-				if err != nil {
-					sLogger.Error().Err(err).Msg("running deployments conformity checks failed")
-				}
-				if hasBeenPatched {
-					sLogger.Debug().Str("step", stepName).Str("resource", "deployments").Msg("resource has been patched")
-					patchedResourcesCounter++
-				}
-				wg.Done()
-			}()
+			hasBeenPatched, err := checkRunningDeploymentsConformity(ctx, sLogger, deployments.Items, cs, n.Name, eng.Options.Prefix)
+			if err != nil {
+				sLogger.Error().Err(err).Msg("running deployments conformity checks failed")
+			}
+			if hasBeenPatched {
+				sLogger.Debug().Str("step", stepName).Str("resource", "deployments").Msg("resource has been patched")
+				patchedResourcesCounter++
+			}
 
 			// check and patch cronjobs
 			sLogger.Debug().Str("step", stepName).Str("resource", "cronjobs").Msg("checking running conformity")
-			go func() {
-				hasBeenPatched, err := checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name)
-				if err != nil {
-					sLogger.Error().Err(err).Msg("running cronjobs conformity checks failed")
-				}
-				if hasBeenPatched {
-					sLogger.Debug().Str("step", stepName).Str("resource", "cronjobs").Msg("resource has been patched")
-					patchedResourcesCounter++
-				}
-				wg.Done()
-			}()
+			hasBeenPatched, err = checkRunningCronjobsConformity(ctx, sLogger, cronjobs.Items, cs, n.Name)
+			if err != nil {
+				sLogger.Error().Err(err).Msg("running cronjobs conformity checks failed")
+			}
+			if hasBeenPatched {
+				sLogger.Debug().Str("step", stepName).Str("resource", "cronjobs").Msg("resource has been patched")
+				patchedResourcesCounter++
+			}
 
 			sLogger.Debug().Str("step", stepName).Str("resource", "cronjobs").Msg("checking running conformity")
-			go func() {
-				hasBeenPatched, err := checkRunningCronjobsBetaConformity(ctx, sLogger, cronjobsBeta.Items, cs, n.Name)
-				if err != nil {
-					sLogger.Error().Err(err).Msg("running cronjobs conformity checks failed")
-				}
-				if hasBeenPatched {
-					sLogger.Debug().Str("step", stepName).Str("resource", "cronjobs").Msg("resource has been patched")
-					patchedResourcesCounter++
-				}
-				wg.Done()
-			}()
+			hasBeenPatched, err = checkRunningCronjobsBetaConformity(ctx, sLogger, cronjobsBeta.Items, cs, n.Name)
+			if err != nil {
+				sLogger.Error().Err(err).Msg("running cronjobs conformity checks failed")
+			}
+			if hasBeenPatched {
+				sLogger.Debug().Str("step", stepName).Str("resource", "cronjobs").Msg("resource has been patched")
+				patchedResourcesCounter++
+			}
 
 			// check and patch statefulsets
 			sLogger.Debug().Str("step", stepName).Str("resource", "statefulsets").Msg("checking running conformity")
-			go func() {
-				hasBeenPatched, err := checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.Prefix)
-				if err != nil {
-					sLogger.Error().Err(err).Msg("running statefulsets conformity checks failed")
-				}
-				if hasBeenPatched {
-					sLogger.Debug().Str("step", stepName).Str("resource", "statefulsets").Msg("resource has been patched")
-					patchedResourcesCounter++
-				}
-				wg.Done()
-			}()
-
-			if eng.Options.KedaEnabled {
-				wg.Add(1)
-				// check and patch scaledobjects
-				sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking running conformity")
-				go func() {
-					hasBeenPatched, err := checkRunningScaledObjectsConformity(ctx, sLogger, scaledobjects.Items, kedacs, n.Name)
-					if err != nil {
-						sLogger.Error().Err(err).Msg("running scaledobjects conformity checks failed")
-					}
-					if hasBeenPatched {
-						sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("resource has been patched")
-						patchedResourcesCounter++
-					}
-					wg.Done()
-				}()
+			hasBeenPatched, err = checkRunningStatefulsetsConformity(ctx, sLogger, statefulsets.Items, cs, n.Name, eng.Options.Prefix)
+			if err != nil {
+				sLogger.Error().Err(err).Msg("running statefulsets conformity checks failed")
+			}
+			if hasBeenPatched {
+				sLogger.Debug().Str("step", stepName).Str("resource", "statefulsets").Msg("resource has been patched")
+				patchedResourcesCounter++
 			}
 
-			// we wait for all the checks to be done
-			wg.Wait()
+			if eng.Options.KedaEnabled {
+				// check and patch scaledobjects
+				sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking running conformity")
+				hasBeenPatched, err := checkRunningScaledObjectsConformity(ctx, sLogger, scaledobjects.Items, kedacs, n.Name)
+				if err != nil {
+					sLogger.Error().Err(err).Msg("running scaledobjects conformity checks failed")
+				}
+				if hasBeenPatched {
+					sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("resource has been patched")
+					patchedResourcesCounter++
+				}
+			}
+
 			sLogger.Debug().Str("step", stepName).Msg("checking running conformity done")
 
 			// now we can check if patchedResourcesCounter is > 0 and add nextSuspendTime depending of the result
