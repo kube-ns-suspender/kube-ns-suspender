@@ -7,3 +7,4 @@ out/
 tools/bin/
 tmp/
 vendor/
+.idea/
