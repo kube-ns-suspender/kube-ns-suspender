@@ -18,6 +18,9 @@ import (
 func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, kedacs *v1alpha1.KedaV1alpha1Client) {
 	eng.Mutex.Lock()
 	eng.Logger.Info().Str("routine", "suspender").Msg("suspender started")
+	defer func() {
+		eng.Logger.Fatal().Str("routine", "suspender").Msg("suspender exited")
+	}()
 
 	var stepName string
 	for {
