@@ -3,7 +3,6 @@ package engine
 import (
 	"errors"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/govirtuo/kube-ns-suspender/metrics"
@@ -34,8 +33,8 @@ const (
 )
 
 type Engine struct {
-	Logger          zerolog.Logger
-	Mutex           sync.Mutex
+	Logger zerolog.Logger
+	// Mutex           sync.Mutex
 	Wl              chan v1.Namespace
 	MetricsServ     metrics.Server
 	RunningDuration time.Duration
