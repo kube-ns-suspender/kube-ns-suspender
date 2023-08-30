@@ -18,9 +18,9 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 
 	var id int
 	for {
-		eng.Mutex.Lock()
+		// eng.Mutex.Lock()
+		// wLogger.Trace().Msg("engine mutex is locked")
 		wLogger := eng.Logger.With().Str("routine", "watcher").Int("inventory_id", id).Logger()
-		wLogger.Trace().Msg("engine mutex is locked")
 
 		start := time.Now()
 		wLogger.Debug().Msg("starting new namespaces inventory")
@@ -79,8 +79,8 @@ func (eng *Engine) Watcher(ctx context.Context, cs *kubernetes.Clientset) {
 		wLogger.Debug().Msgf("Metric - unknown namespaces: %d", unknownNs)
 		eng.MetricsServ.NumUnknownNamespaces.Set(float64(unknownNs))
 
-		eng.Mutex.Unlock()
-		wLogger.Trace().Msg("engine mutex is unlocked")
+		// eng.Mutex.Unlock()
+		// wLogger.Trace().Msg("engine mutex is unlocked")
 
 		// Question: Why not add `Int("inventory_id", id)` to every log line ?
 		wLogger.Debug().Msg("namespaces inventory ended")
