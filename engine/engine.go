@@ -56,6 +56,8 @@ type Options struct {
 	SlackChannelName          string
 	SlackChannelLink          string
 	KedaEnabled               bool
+	AwsRdsEnabled             bool
+	AwsRdsNamespaceTag        string
 }
 
 // New returns a new engine instance

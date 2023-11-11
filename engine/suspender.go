@@ -11,11 +11,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/retry"
+
+	"github.com/aws/aws-sdk-go-v2/service/rds"
+	"github.com/aws/aws-sdk-go-v2/service/rds/types"
 )
 
 // Suspender receives namespaces from Watcher and handles them. It means that
 // it will read and write namespaces' annotations, and scale resources.
-func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, kedacs *v1alpha1.KedaV1alpha1Client) {
+func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, kedacs *v1alpha1.KedaV1alpha1Client, rdsclient *rds.Client) {
 	eng.Mutex.Lock()
 	eng.Logger.Info().Str("routine", "suspender").Msg("suspender started")
 	defer func() {
@@ -238,6 +241,37 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			}
 		}
 
+		var rdsclusters []types.DBCluster
+		if eng.Options.AwsRdsEnabled {
+			sLogger.Debug().Str("step", stepName).Str("resource", "rds").Msg("get resource from AWS")
+			var marker *string
+			for {
+				// get rds clusters associated with the namespace
+				result, err := rdsclient.DescribeDBClusters(ctx, &rds.DescribeDBClustersInput{Marker: marker})
+				if err != nil {
+					sLogger.Fatal().Err(err).Msg("cannot describe rdsclusters")
+				}
+
+				// iterate through the clusters and find any tagged for this namespace
+				for i := range result.DBClusters {
+					// exclude serverless v1 clusters since they cannot be stopped
+					if result.DBClusters[i].EngineMode != nil && *result.DBClusters[i].EngineMode != "serverless" {
+						for t := range result.DBClusters[i].TagList {
+							tag := result.DBClusters[i].TagList[t]
+							if tag.Key != nil && tag.Value != nil && *tag.Key == eng.Options.AwsRdsNamespaceTag && n.Name == *tag.Value {
+								rdsclusters = append(rdsclusters, result.DBClusters[i])
+							}
+						}
+					}
+				}
+
+				marker = result.Marker
+				if marker == nil {
+					break
+				}
+			}
+		}
+
 		/*
 			Step 3
 
@@ -249,7 +283,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			the underlying replicas.
 			This switch-case will match dState again, with different behaviors:
 			- if dState == Suspended:
-				* be sure that the undelying resources are suspended. If not, downscale them
+				* be sure that the underlying resources are suspended. If not, downscale them
 
 			- if dState == Running:
 				* check if the namespace is correctly Running, as the annotation might have been set manually. If not,
@@ -310,6 +344,19 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 					wg.Done()
 				}()
 			}
+
+			if eng.Options.AwsRdsEnabled {
+				wg.Add(1)
+				// check and patch rdsclusters
+				sLogger.Debug().Str("step", stepName).Str("resource", "rdsclusters").Msg("checking suspended Conformity")
+				go func() {
+					if err := checkSuspendedRDSClustersConformity(ctx, sLogger, rdsclusters, rdsclient, n.Name); err != nil {
+						sLogger.Error().Err(err).Str("object", "rdsclusters").Msg("suspended rdsclusters conformity checks failed")
+					}
+					wg.Done()
+				}()
+			}
+
 			// we wait for all the checks to be done
 			wg.Wait()
 			sLogger.Debug().Str("step", stepName).Msg("checking suspended Conformity done")
@@ -418,6 +465,23 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 					}
 					if hasBeenPatched {
 						sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("resource has been patched")
+						patchedResourcesCounter++
+					}
+					wg.Done()
+				}()
+			}
+
+			if eng.Options.AwsRdsEnabled {
+				wg.Add(1)
+				// check and patch rdsclusters
+				sLogger.Debug().Str("step", stepName).Str("resource", "rdsclusters").Msg("checking running conformity")
+				go func() {
+					hasBeenPatched, err := checkRunningRDSClustersConformity(ctx, sLogger, rdsclusters, rdsclient, n.Name)
+					if err != nil {
+						sLogger.Error().Err(err).Msg("running rdsclusters conformity checks failed")
+					}
+					if hasBeenPatched {
+						sLogger.Debug().Str("step", stepName).Str("resource", "rdsclusters").Msg("resource has been patched")
 						patchedResourcesCounter++
 					}
 					wg.Done()

@@ -90,6 +90,8 @@ The suspender function does all the work of reading namespaces/resources annotat
 | `--watcher-idle`       | Watcher idle duration in seconds                                  |        15         | `KUBE_NS_SUSPENDER_WATCHER_IDLE`       |
 | `--watchlist-size`     | Size of the watchlist containing namespaces waiting to be handled |        512        | `KUBE_NS_SUSPENDER_WATCHLIST_SIZE`     |
 | `--keda-enabled`       | Enable pausing of Keda.sh ScaledObjects                           |       false       | `KUBE_NS_SUSPENDER_KEDA_ENABLED`       |
+| `--rds-enabled`        | Enable stop and start of AWS RDS Clusters                         |       false       | `KUBE_NS_SUSPENDER_RDS_ENABLED`        |
+| `--rds-namespace-tag`  | Tag key on AWS RDS cluster identifying associated namespace       |     Namespace     | `KUBE_NS_SUSPENDER_RDS_NAMESPACE_TAG`  |
 
 ### Resources
 

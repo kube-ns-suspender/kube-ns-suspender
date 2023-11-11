@@ -16,6 +16,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/rds"
+
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
@@ -47,6 +50,8 @@ func main() {
 	fs.StringVar(&opt.SlackChannelLink, "slack-channel-link", "", "Link of the helm Slack channel in the UI bug page")
 	fs.IntVar(&opt.WatchListSize, "watchlist-size", 512, "Size of the watchlist containing namespaces waiting to be handled")
 	fs.BoolVar(&opt.KedaEnabled, "keda-enabled", false, "Enable pausing of Keda.sh scaledobjects")
+	fs.BoolVar(&opt.AwsRdsEnabled, "rds-enabled", false, "Enable stop/start of associated AWS RDS clusters")
+	fs.StringVar(&opt.AwsRdsNamespaceTag, "rds-namespace-tag", "Namespace", "Tag key on AWS RDS clusters identifying associated namespace")
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		log.Fatal().Err(err).Msg("cannot parse flags")
 	}
@@ -147,10 +152,22 @@ func main() {
 		eng.Logger.Info().Msg("keda is disabled")
 	}
 
+	// create the AWS SDK client
+	var rdsclient *rds.Client
+	if eng.Options.AwsRdsEnabled {
+		// Load the Shared AWS Configuration (~/.aws/config)
+		cfg, err := awsconfig.LoadDefaultConfig(context.TODO())
+		if err != nil {
+			eng.Logger.Fatal().Err(err).Msg("failed to load aws config")
+		}
+
+		rdsclient = rds.NewFromConfig(cfg)
+	}
+
 	eng.Logger.Info().Msgf("starting 'Watcher' and 'Suspender' routines")
 	ctx := context.Background()
 	go eng.Watcher(ctx, clientset)
-	go eng.Suspender(ctx, clientset, kedaclient)
+	go eng.Suspender(ctx, clientset, kedaclient, rdsclient)
 
 	// wait forever
 	select {}
