@@ -19,7 +19,6 @@ import (
 // Suspender receives namespaces from Watcher and handles them. It means that
 // it will read and write namespaces' annotations, and scale resources.
 func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, kedacs *v1alpha1.KedaV1alpha1Client, rdsclient *rds.Client) {
-	eng.Mutex.Lock()
 	eng.Logger.Info().Str("routine", "suspender").Msg("suspender started")
 	defer func() {
 		eng.Logger.Fatal().Str("routine", "suspender").Msg("suspender exited")
@@ -27,14 +26,12 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 
 	var stepName string
 	for {
-		eng.Mutex.Unlock()
 
 		// wait for the next namespace to check
 		n := <-eng.Wl
 		start := time.Now()
 
 		// we create a sublogger to avoid "namespace" field duplication at each loop
-		eng.Mutex.Lock()
 		sLogger := eng.Logger.With().Str("routine", "suspender").Str("namespace", n.Name).Logger()
 		sLogger.Debug().Msg("namespace received from watcher")
 
@@ -212,7 +209,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 
 		// get cronjobs of the namespace
 		// we need to support both batchv1 and batchv1beta
-		sLogger.Debug().Str("step", stepName).Str("resource", "cronjobs").Str("apiVersion", "bacthv1").Msg("get resource from k8s")
+		sLogger.Debug().Str("step", stepName).Str("resource", "cronjobs").Str("apiVersion", "batchv1").Msg("get resource from k8s")
 		cronjobs, err := cs.BatchV1().CronJobs(n.Name).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			sLogger.Warn().Err(err).Msg("cannot list cronjobs with API version batchv1")
