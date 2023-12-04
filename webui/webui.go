@@ -226,7 +226,7 @@ func (h handler) suspendPage(w http.ResponseWriter, r *http.Request, l zerolog.L
 
 	p.HasMessage = true
 	p.Message = fmt.Sprintf("Namespace %s successfully suspended.", p.CurrentNamespace.Name)
-	l.Info().Str("page", "/suspended").Msgf("suspendeded namespace %s using web ui", p.CurrentNamespace.Name)
+	l.Info().Str("page", "/suspended").Msgf("suspended namespace %s using web ui", p.CurrentNamespace.Name)
 	err = tmpl.Execute(w, p)
 	if err != nil {
 		l.Error().Err(err).Str("page", "/suspended").Msg("cannot execute template")
