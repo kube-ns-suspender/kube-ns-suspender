@@ -49,7 +49,8 @@ kubectl apply -f manifests/run/base/
 
 This will apply all the required resources.
 
-> **Note**: the latest version of `kube-ns-suspender` will be deployed as the image tag used is `:latest`.
+> [!NOTE]
+> The latest version of `kube-ns-suspender` will be deployed as the image tag used is `:latest`.
 
 A namespace `kube-ns-suspender` will be created and the manifests will be deployed within.
 
@@ -140,7 +141,8 @@ When unsuspending a namespace, a new annotation will be added automically: `kube
 
 This annotation contains the date at which the namespace will be automatically suspended again (following the format [`time.RFC822Z`](https://pkg.go.dev/time#pkg-constants)). The default value set by the controller can be tweaked with the flag `--running-duration`. The annotation value can also be edited manually if needed.
 
-> **Note**: `dailySuspendTime` has a higher priority than `nextSuspendTime`
+> [!NOTE]
+> `dailySuspendTime` has a higher priority than `nextSuspendTime`.
 
 #### On resources
 
@@ -169,7 +171,8 @@ Cronjobs have a `spec.suspend` value that indicates if they must be runned or no
 
 ## WebUI screenshots
 
-> **Note**: the webUI is **disabled** by default.
+> [!NOTE]
+> The webUI is **disabled** by default.
 
 Since version `v2.1.0`, you can both suspend and unsuspend a namespace from the web UI. It is also possible to specify a custom Slack channel using `--slack-channel-name` and `--slack-channel-link` (and their associated env vars). If only the link is provided, nothing will appear, but if there is only the name the Slack channel name will appear but will not be clickable. By default, only the link to the GitHub issues appears.
 
@@ -186,7 +189,7 @@ Since version `v2.1.0`, you can both suspend and unsuspend a namespace from the 
 
 To test the modifications in real-time, this project uses [`devspace`](https://devspace.sh/). It is configured to use the manifests in `manifests/dev/`.
 
-> :bulb:
+> [!TIP]
 >
 > * You can start a local Kubernetes cluster with the command: `make kind-start`
 > * Then run in your shell `export KUBE_CONFIG=` the value reported :point_up:
@@ -209,9 +212,9 @@ Then deploy your dev version of `kube-ns-suspender`:
 devspace dev
 ```
 
-> :warning:
+> [!WARNING]
 > 
-> `devspace` and `kubectl` will deploy the manifests in the cluster set by the current context. be sure to **not** deploy in the wrong cluster.
+> `devspace` and `kubectl` will deploy the manifests in the cluster set by the current context. Be sure to **not** deploy in the wrong cluster.
 >
 
 Once the dev deployment is over, you'll have access to a shell in the container. You can start developing!
