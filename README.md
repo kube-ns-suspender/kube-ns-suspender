@@ -192,7 +192,7 @@ To test the modifications in real-time, this project uses [`devspace`](https://d
 > [!TIP]
 >
 > * You can start a local Kubernetes cluster with the command: `make kind-start`
-> * Then run in your shell `export KUBE_CONFIG=` the value reported :point_up:
+> * Then run in your shell `export KUBECONFIG=` the value reported :point_up:
 
 First, set the namespace to use:
 
