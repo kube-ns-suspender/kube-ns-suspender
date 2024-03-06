@@ -128,3 +128,31 @@ spec:
       metricType: Utilization
       metadata:
         value: "50"
+##
+# resources with the kube-ns-suspender/ignore annotation
+# see issue #105 for more details
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ignore-misc-depl
+  namespace: kube-ns-suspender-testing-namespace
+  labels:
+    app: ignore-misc
+  annotations:
+    kube-ns-suspender/ignore: "true"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ignore-misc
+  template:
+    metadata:
+      labels:
+        app: ignore-misc
+    spec:
+      containers:
+        - name: ignore-misc
+          image: nginx:latest
+          ports:
+            - containerPort: 80

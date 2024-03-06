@@ -23,6 +23,7 @@ Kubernetes controller managing namespaces life cycle.
         - [**desiredState**](#desiredstate)
         - [**nextSuspendTime**](#nextsuspendtime)
       - [On resources](#on-resources)
+        - [Common](#common)
         - [Deployments and Stateful Sets](#deployments-and-stateful-sets)
         - [Cronjobs](#cronjobs)
     - [Metrics](#metrics)
@@ -137,7 +138,7 @@ To do this, you can either use the webui, do it manually with `kubectl edit` or 
 
 ##### **nextSuspendTime**
 
-When unsuspending a namespace, a new annotation will be added automically: `kube-ns-suspender/nextSuspendTime`.
+When unsuspending a namespace, a new annotation will be added automatically: `kube-ns-suspender/nextSuspendTime`.
 
 This annotation contains the date at which the namespace will be automatically suspended again (following the format [`time.RFC822Z`](https://pkg.go.dev/time#pkg-constants)). The default value set by the controller can be tweaked with the flag `--running-duration`. The annotation value can also be edited manually if needed.
 
@@ -146,7 +147,13 @@ This annotation contains the date at which the namespace will be automatically s
 
 #### On resources
 
-Annotations are employed to save the original state of a resource. 
+Annotations are employed to save the original state of a resource.
+
+##### Common
+
+All the resources have a common annotation which is `kube-ns-suspender/ignore`. This annotation expects a string which **must be** either 'true' or 'false'. When set to 'true', despite every other indications (namespace annotations etc.), the state of the resource will remain unchanged.
+
+In fact, any value other than 'true' will be considered as being 'false'.
 
 ##### Deployments and Stateful Sets
 

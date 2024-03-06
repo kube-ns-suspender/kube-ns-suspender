@@ -60,8 +60,12 @@ setup() {
 }
 
 @test "${BATS_TEST_FILENAME} - init - deploy mock manifests" {
-    run kubectl apply -f manifests/testing-namespace/crds.yaml
     run kubectl apply -f manifests/testing-namespace/full.yaml
+    [ "$status" -eq 0 ]
+}
+
+@test "${BATS_TEST_FILENAME} - init - deploy mock CRDs" {
+    run kubectl apply -f manifests/testing-namespace/crds.yaml
     [ "$status" -eq 0 ]
 }
 
@@ -69,6 +73,11 @@ setup() {
 #
 # === Pre-suspend
 #
+@test "${BATS_TEST_FILENAME} - action - wait for ressources to be applied" {
+    run sleep 30
+    [ "$status" -eq 0 ]
+}
+
 @test "${BATS_TEST_FILENAME} - deployments - check if pods 'misc-depl' are up and running (wait max 6x10s)" {
     run try "at most 6 times every 10s \
             to get pods named 'misc-depl' \
@@ -77,8 +86,22 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
-@test "${BATS_TEST_FILENAME} - deployments - check the number of replicas (there should be 3)" {
-    run verify "there are 3 pods named 'misc-depl-*'"
+@test "${BATS_TEST_FILENAME} - deployments - check if pods 'ignore-misc-depl' are up and running (wait max 6x10s)" {
+    run try "at most 6 times every 10s \
+            to get pods named 'ignore-misc-depl' \
+            and verify that 'status' is 'running'"
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+# @test "${BATS_TEST_FILENAME} - deployments - check the number of replicas (there should be 3)" {
+#     run verify "there are 3 pods named 'misc-depl-*'"
+#     debug "Command output is: $output"
+#     [ "$status" -eq 0 ]
+# }
+
+@test "${BATS_TEST_FILENAME} - deployments - check the number of ignored replicas (there should be 3)" {
+    run verify "there are 3 pods named 'ignore-misc-depl-*'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
@@ -97,6 +120,14 @@ setup() {
     run try "at most 12 times every 10s \
             to find 0 pod named 'misc-depl' \
             with 'status' being 'running'" 
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+@test "${BATS_TEST_FILENAME} - deployments - check if pods 'ignore-misc-depl-*' still have 3 replicas up and running" {
+    run try "at most 12 times every 10s \
+            to find 3 pod named 'ignore-misc-depl' \
+            with 'status' being 'running'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
@@ -135,6 +166,12 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+@test "${BATS_TEST_FILENAME} - init - scaled to 0 - scale ignore-misc-depl to 0" {
+    run kubectl -n kube-ns-suspender-testing-namespace scale --replicas=0 deployment/ignore-misc-depl
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
 @test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check if pods 'misc-depl-*' have 0 replicas up and running" {
     run try "at most 12 times every 10s \
             to find 0 pod named 'misc-depl' \
@@ -143,8 +180,22 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+@test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check if pods 'ignore-misc-depl-*' have 0 replicas up and running" {
+    run try "at most 12 times every 10s \
+            to find 0 pod named 'ignore-misc-depl' \
+            with 'status' being 'running'"
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
 @test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check the number of replicas (there should be 0)" {
     run verify "there are 0 pods named 'misc-depl-*'"
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+@test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check the number of ignored replicas (there should be 0)" {
+    run verify "there are 0 pods named 'ignore-misc-depl-*'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
@@ -163,6 +214,14 @@ setup() {
     run try "at most 12 times every 10s \
             to find 0 pod named 'misc-depl' \
             with 'status' being 'running'" 
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+@test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check if pods 'ignore-misc-depl-*' have 0 replicas post-suspend" {
+    run try "at most 12 times every 10s \
+            to find 0 pod named 'ignore-misc-depl' \
+            with 'status' being 'running'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
@@ -186,8 +245,22 @@ setup() {
     [ "$status" -eq 0 ]
 }
 
+@test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check if pods 'ignore-misc-depl-*' have 0 replicas post-unsuspend" {
+    run try "at most 12 times every 10s \
+            to find 0 pod named 'ignore-misc-depl' \
+            with 'status' being 'running'"
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
 @test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check if the number of replicas is back to original" {
     run verify "there are 0 pods named 'misc-depl-*'"
+    debug "Command output is: $output"
+    [ "$status" -eq 0 ]
+}
+
+@test "${BATS_TEST_FILENAME} - deployments - scaled to 0 - check if the number of ignored replicas is back to original" {
+    run verify "there are 0 pods named 'ignore-misc-depl-*'"
     debug "Command output is: $output"
     [ "$status" -eq 0 ]
 }
@@ -197,7 +270,7 @@ teardown() {
 }
 
 # Note: This step seems to not be run by CI jobs on GitHub Actions
-# but still usefull for local testing.
+# but still useful for local testing.
 teardown_file() {
     echo "----> teardown_file()"
 
@@ -216,7 +289,7 @@ teardown_file() {
 # - https://bats-core.readthedocs.io/en/stable/faq.html#how-can-i-debug-a-failing-test
 #   Use appropriate `asserts_` for your task instead of raw bash comparisons.
 #   `asserts_` will print the output when the test fails while raw bash won’t.
-#   -> Same consequece: Display output only when it fails rather than always
+#   -> Same consequence: Display output only when it fails rather than always
 #
 # - https://bats-core.readthedocs.io/en/stable/writing-tests.html#special-variables
 # 
