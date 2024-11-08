@@ -14,6 +14,21 @@ YELLOW := $(shell tput -Txterm setaf 3)
 WHITE  := $(shell tput -Txterm setaf 7)
 RESET  := $(shell tput -Txterm sgr0)
 
+MACHINE_ARCH=$(shell uname -m)
+ifeq ($(MACHINE_ARCH), aarch64)
+	ARCH=arm64
+endif
+ifeq ($(MACHINE_ARCH), arm64)
+	ARCH=arm64
+endif
+ifeq ($(MACHINE_ARCH), x86_64)
+	ARCH=amd64
+endif
+ifeq ($(MACHINE_ARCH), amd64)
+	ARCH=amd64
+endif
+
+
 .PHONY: all build clean
 
 all: help
@@ -83,7 +98,7 @@ e2e_cleanup: ## Cleanup End2End resources
 ## Docker:
 docker-build: ## Use the Dockerfile to build the container
 	@echo '${GREEN}---> Build docker container${RESET}'
-	docker build --rm --tag $(BINARY_NAME) --build-arg VERSION=${VERSION} --build-arg BUILD_DATE=$(shell date +%s) .
+	docker build --rm --tag $(BINARY_NAME) --build-arg ARCH=${ARCH} --build-arg VERSION=${VERSION} --build-arg BUILD_DATE=$(shell date +%s) .
 
 	@echo '${GREEN}---> Tag as 'latest'${RESET}'
 	docker tag $(BINARY_NAME) $(DOCKER_REGISTRY)/$(BINARY_NAME):latest

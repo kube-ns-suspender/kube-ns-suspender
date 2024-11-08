@@ -1,19 +1,22 @@
 FROM golang:1.23.2-bookworm AS builder
 
+ARG ARCH=amd64 \
+    VERSION=n/a \
+    BUILD_DATE=n/a
+
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
-    GOARCH=arm64
-
-ARG VERSION=n/a \
-    BUILD_DATE=n/a
+    GOARCH=${ARCH} \
+    UPX_VER=4.2.4 \
+    UPX_PKG=upx-${UPX_VER}-${ARCH}_linux.tar.xz
 
 WORKDIR /build
 
 RUN apt update && apt install xz-utils file -y
-RUN wget https://github.com/upx/upx/releases/download/v4.2.4/upx-4.2.4-arm64_linux.tar.xz
-RUN tar --lzma -xvf upx-4.2.4-arm64_linux.tar.xz
-RUN cp upx-4.2.4-arm64_linux/upx /usr/local/bin
+RUN wget https://github.com/upx/upx/releases/download/v${UPX_VER}/${UPX_PKG}}
+RUN tar --lzma -xvf ${UPX_PKG} -C upx
+RUN cp upx/upx /usr/local/bin
 
 COPY go.mod .
 COPY go.sum .
