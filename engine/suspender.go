@@ -14,11 +14,13 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/service/rds"
 	"github.com/aws/aws-sdk-go-v2/service/rds/types"
+	monitoring "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promClientset "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 )
 
 // Suspender receives namespaces from Watcher and handles them. It means that
 // it will read and write namespaces' annotations, and scale resources.
-func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, kedacs *v1alpha1.KedaV1alpha1Client, rdsclient *rds.Client) {
+func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, kedacs *v1alpha1.KedaV1alpha1Client, promClient *promClientset.Clientset, rdsclient *rds.Client) {
 	eng.Logger.Info().Str("routine", "suspender").Msg("suspender started")
 	defer func() {
 		eng.Logger.Fatal().Str("routine", "suspender").Msg("suspender exited")
@@ -238,6 +240,15 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			}
 		}
 
+		prometheuses := &monitoring.PrometheusList{}
+		if eng.Options.PrometheusEnabled {
+			sLogger.Debug().Str("step", stepName).Str("resource", "prometheuses").Msg("get resource from k8s")
+			prometheuses, err = promClient.MonitoringV1().Prometheuses(n.Name).List(ctx, metav1.ListOptions{})
+			if err != nil {
+				sLogger.Fatal().Err(err).Msg("cannot list prometheuses")
+			}
+		}
+
 		var rdsclusters []types.DBCluster
 		if eng.Options.AwsRdsEnabled {
 			sLogger.Debug().Str("step", stepName).Str("resource", "rds").Msg("get resource from AWS")
@@ -336,6 +347,17 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 				sLogger.Debug().Str("step", stepName).Str("resource", "scaledobjects").Msg("checking suspended Conformity")
 				go func() {
 					if err := checkSuspendedScaledObjectsConformity(ctx, sLogger, scaledobjects.Items, kedacs, n.Name); err != nil {
+						sLogger.Error().Err(err).Str("object", "scaledobjects").Msg("suspended scaledobjects conformity checks failed")
+					}
+					wg.Done()
+				}()
+			}
+
+			if eng.Options.PrometheusEnabled {
+				wg.Add(1)
+				sLogger.Debug().Str("step", stepName).Str("resource", "prometheuses").Msg("checking suspended Conformity")
+				go func() {
+					if err := checkSuspendedPrometheusesConformity(ctx, sLogger, prometheuses.Items, promClient, n.Name, eng.Options.Prefix); err != nil {
 						sLogger.Error().Err(err).Str("object", "scaledobjects").Msg("suspended scaledobjects conformity checks failed")
 					}
 					wg.Done()
@@ -450,6 +472,22 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 				}
 				wg.Done()
 			}()
+
+			if eng.Options.PrometheusEnabled {
+				wg.Add(1)
+				sLogger.Debug().Str("step", stepName).Str("resource", "prometheuses").Msg("checking running conformity")
+				go func() {
+					hasBeenPatched, err := checkRunningPrometheusesConformity(ctx, sLogger, prometheuses.Items, promClient, n.Name, eng.Options.Prefix)
+					if err != nil {
+						sLogger.Error().Err(err).Msg("running prometheuses conformity checks failed")
+					}
+					if hasBeenPatched {
+						sLogger.Debug().Str("step", stepName).Str("resource", "prometheuses").Msg("resource has been patched")
+						patchedResourcesCounter++
+					}
+					wg.Done()
+				}()
+			}
 
 			if eng.Options.KedaEnabled {
 				wg.Add(1)

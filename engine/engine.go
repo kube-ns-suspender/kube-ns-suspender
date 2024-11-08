@@ -56,6 +56,7 @@ type Options struct {
 	KedaEnabled               bool
 	AwsRdsEnabled             bool
 	AwsRdsNamespaceTag        string
+	PrometheusEnabled         bool
 }
 
 // New returns a new engine instance

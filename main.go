@@ -12,6 +12,7 @@ import (
 	"github.com/govirtuo/kube-ns-suspender/pprof"
 	"github.com/govirtuo/kube-ns-suspender/webui"
 	"github.com/kedacore/keda/v2/pkg/generated/clientset/versioned/typed/keda/v1alpha1"
+	promClientset "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	"github.com/rs/zerolog/log"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -50,6 +51,7 @@ func main() {
 	fs.StringVar(&opt.SlackChannelLink, "slack-channel-link", "", "Link of the helm Slack channel in the UI bug page")
 	fs.IntVar(&opt.WatchListSize, "watchlist-size", 512, "Size of the watchlist containing namespaces waiting to be handled")
 	fs.BoolVar(&opt.KedaEnabled, "keda-enabled", false, "Enable pausing of Keda.sh scaledobjects")
+	fs.BoolVar(&opt.PrometheusEnabled, "prometheus-enabled", false, "Enable pasing of prometheus-operator Prometheuses")
 	fs.BoolVar(&opt.AwsRdsEnabled, "rds-enabled", false, "Enable stop/start of associated AWS RDS clusters")
 	fs.StringVar(&opt.AwsRdsNamespaceTag, "rds-namespace-tag", "Namespace", "Tag key on AWS RDS clusters identifying associated namespace")
 	if err := fs.Parse(os.Args[1:]); err != nil {
@@ -152,6 +154,19 @@ func main() {
 		eng.Logger.Info().Msg("keda is disabled")
 	}
 
+	// create prometheus-operator client
+	promClient := &promClientset.Clientset{}
+	if eng.Options.PrometheusEnabled {
+		start = time.Now()
+		promClient, err = promClientset.NewForConfig(config)
+		if err != nil {
+			eng.Logger.Fatal().Err(err).Msg("cannot create prometheus client")
+		}
+		eng.Logger.Info().Msgf("prometheus client succesfully created in %s", time.Since(start))
+	} else {
+		eng.Logger.Info().Msg("pronetheus is disabled")
+	}
+
 	// create the AWS SDK client
 	var rdsclient *rds.Client
 	if eng.Options.AwsRdsEnabled {
@@ -167,7 +182,7 @@ func main() {
 	eng.Logger.Info().Msgf("starting 'Watcher' and 'Suspender' routines")
 	ctx := context.Background()
 	go eng.Watcher(ctx, clientset)
-	go eng.Suspender(ctx, clientset, kedaclient, rdsclient)
+	go eng.Suspender(ctx, clientset, kedaclient, promClient, rdsclient)
 
 	// wait forever
 	select {}
