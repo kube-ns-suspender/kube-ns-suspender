@@ -164,7 +164,7 @@ func main() {
 		}
 		eng.Logger.Info().Msgf("prometheus client succesfully created in %s", time.Since(start))
 	} else {
-		eng.Logger.Info().Msg("pronetheus is disabled")
+		eng.Logger.Info().Msg("prometheus is disabled")
 	}
 
 	// create the AWS SDK client
