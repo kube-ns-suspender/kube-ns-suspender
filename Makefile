@@ -17,17 +17,13 @@ RESET  := $(shell tput -Txterm sgr0)
 MACHINE_ARCH=$(shell uname -m)
 ifeq ($(MACHINE_ARCH), aarch64)
 	ARCH=arm64
-endif
-ifeq ($(MACHINE_ARCH), arm64)
+else ($(MACHINE_ARCH), arm64)
 	ARCH=arm64
-endif
-ifeq ($(MACHINE_ARCH), x86_64)
+else ($(MACHINE_ARCH), x86_64)
+	ARCH=amd64
+else ($(MACHINE_ARCH), amd64)
 	ARCH=amd64
 endif
-ifeq ($(MACHINE_ARCH), amd64)
-	ARCH=amd64
-endif
-
 
 .PHONY: all build clean
 
