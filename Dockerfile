@@ -8,14 +8,16 @@ ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
     GOARCH=${ARCH} \
-    UPX_VER=4.2.4 \
-    UPX_PKG=upx-${UPX_VER}-${ARCH}_linux.tar.xz
+    UPX_VER=4.2.4
+
+ENV UPX_PKG=upx-${UPX_VER}-${ARCH}_linux.tar.xz 
 
 WORKDIR /build
 
 RUN apt update && apt install xz-utils file -y
-RUN wget https://github.com/upx/upx/releases/download/v${UPX_VER}/${UPX_PKG}}
-RUN tar --lzma -xvf ${UPX_PKG} -C upx
+RUN echo ${UPX_VER} ${UPX_PKG}
+RUN wget https://github.com/upx/upx/releases/download/v${UPX_VER}/${UPX_PKG}
+RUN mkdir upx && tar --lzma -xvf ${UPX_PKG} -C upx --strip-components=1
 RUN cp upx/upx /usr/local/bin
 
 COPY go.mod .

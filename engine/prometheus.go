@@ -34,7 +34,7 @@ func checkRunningPrometheusesConformity(ctx context.Context, l zerolog.Logger, p
 				l.Info().Str("prometheus", p.Name).Msgf("scaling %s from 0 to %d replicas", p.Name, desiredReplicas)
 				// patch the prometheus
 				//_, err := cs.MonitoringV1().Prometheuses(ns).Update(context.TODO(), p, metav1.UpdateOptions{})
-				if err := patchPrometheusReplicas(ctx, cs, ns, p.Name, prefix, 0); err != nil {
+				if err := patchPrometheusReplicas(ctx, cs, ns, p.Name, prefix, desiredReplicas); err != nil {
 					return hasBeenPatched, err
 				}
 
@@ -51,7 +51,7 @@ func checkSuspendedPrometheusesConformity(ctx context.Context, l zerolog.Logger,
 		if repl != 0 {
 			// TODO: what about fixing the annotation original Replicas here ?
 			l.Info().Str("prometheus", p.Name).Msgf("scaling %s from %d to 0 replicas", p.Name, repl)
-			// patch the deployment
+			// patch the prometheus
 			if err := patchPrometheusReplicas(ctx, cs, ns, p.Name, prefix, 0); err != nil {
 				return err
 			}
