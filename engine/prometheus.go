@@ -31,7 +31,7 @@ func checkRunningPrometheusesConformity(ctx context.Context, l zerolog.Logger, p
 				}
 			}
 			if desiredReplicas != 0 {
-				l.Info().Str("statefulset", p.Name).Msgf("scaling %s from 0 to %d replicas", p.Name, desiredReplicas)
+				l.Info().Str("prometheus", p.Name).Msgf("scaling %s from 0 to %d replicas", p.Name, desiredReplicas)
 				// patch the prometheus
 				//_, err := cs.MonitoringV1().Prometheuses(ns).Update(context.TODO(), p, metav1.UpdateOptions{})
 				if err := patchPrometheusReplicas(ctx, cs, ns, p.Name, prefix, 0); err != nil {
