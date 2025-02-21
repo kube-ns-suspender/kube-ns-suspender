@@ -44,6 +44,7 @@ type Options struct {
 	WatcherIdle               int
 	WatchListSize             int
 	RunningDuration           string
+	RunningDurationForce      bool
 	LogLevel                  string
 	TZ                        string
 	Prefix, ControllerName    string
