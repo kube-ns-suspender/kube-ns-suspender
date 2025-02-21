@@ -40,6 +40,7 @@ func main() {
 	fs.StringVar(&opt.ControllerName, "controller-name", "kube-ns-suspender", "Unique name of the controller")
 	fs.StringVar(&opt.RunningDuration, "running-duration", "4h", "Running duration")
 	fs.BoolVar(&opt.RunningDurationForce, "running-duration-force", false, "Force turn on running duration")
+	fs.BoolVar(&opt.TimeIsEditable, "time-is-editable", false, "Time is editable")
 	fs.IntVar(&opt.WatcherIdle, "watcher-idle", 15, "Watcher idle duration (in seconds)")
 	fs.BoolVar(&opt.NoKubeWarnings, "no-kube-warnings", false, "Disable Kubernetes warnings")
 	fs.BoolVar(&opt.HumanLogs, "human", false, "Disable JSON logging")
@@ -86,7 +87,7 @@ func main() {
 		go func() {
 			uiLogger := eng.Logger.With().Str("routine", "webui").Logger()
 			if err := webui.Start(uiLogger, "8080",
-				eng.Options.Prefix, eng.Options.ControllerName, Version, BuildDate, opt.SlackChannelName, opt.SlackChannelLink); err != nil {
+				eng.Options.Prefix, eng.Options.ControllerName, Version, BuildDate, opt.SlackChannelName, opt.SlackChannelLink, opt.TimeIsEditable); err != nil {
 				uiLogger.Fatal().Err(err).Msg("web UI failed")
 			}
 		}()
@@ -103,6 +104,7 @@ func main() {
 	eng.Logger.Debug().Msgf("watchlist size: %d", eng.Options.WatchListSize)
 	eng.Logger.Debug().Msgf("running duration: %s", eng.RunningDuration)
 	eng.Logger.Debug().Msgf("running duration force: %s", eng.Options.RunningDurationForce)
+	eng.Logger.Debug().Msgf("time is editable: %s", eng.Options.TimeIsEditable)
 	eng.Logger.Debug().Msgf("log level: %s", eng.Options.LogLevel)
 	eng.Logger.Debug().Msgf("json logging: %v", !eng.Options.HumanLogs)
 	eng.Logger.Debug().Msgf("controller name: %v", eng.Options.ControllerName)

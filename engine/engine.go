@@ -45,6 +45,7 @@ type Options struct {
 	WatchListSize             int
 	RunningDuration           string
 	RunningDurationForce      bool
+	TimeIsEditable						bool
 	LogLevel                  string
 	TZ                        string
 	Prefix, ControllerName    string

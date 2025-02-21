@@ -28,6 +28,7 @@ type Page struct {
 	CurrentNamespace  Namespace
 	Version           string
 	BuildDate         string
+	TimeIsEditable		bool
 	SlackChannelName  string
 	SlackChannelLink  string
 }
@@ -63,12 +64,13 @@ type handler struct {
 	version, builddate string
 	slackChannelName   string
 	slackChannelLink   string
+	TimeIsEditable     bool
 }
 
 var cs *kubernetes.Clientset
 
 // Start starts the webui HTTP server
-func Start(l zerolog.Logger, port, prefix, cn, v, bd, slackname, slacklink string) error {
+func Start(l zerolog.Logger, port, prefix, cn, v, bd, slackname, slacklink string, timeIsEditable bool) error {
 	// create the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -83,7 +85,7 @@ func Start(l zerolog.Logger, port, prefix, cn, v, bd, slackname, slacklink strin
 
 	srv := http.Server{
 		Addr:    ":" + port,
-		Handler: createRouter(l, prefix, cn, v, bd, slackname, slacklink),
+		Handler: createRouter(l, prefix, cn, v, bd, slackname, slacklink, timeIsEditable),
 	}
 	if err := srv.ListenAndServe(); err != nil {
 		return err
@@ -93,7 +95,7 @@ func Start(l zerolog.Logger, port, prefix, cn, v, bd, slackname, slacklink strin
 
 // createRouter creates the router with all the HTTP routes.
 // It also passes different common values to the handlers
-func createRouter(l zerolog.Logger, prefix, cn, v, bd, slackname, slacklink string) *mux.Router {
+func createRouter(l zerolog.Logger, prefix, cn, v, bd, slackname, slacklink string, timeIsEditable bool) *mux.Router {
 	r := mux.NewRouter()
 
 	if v == "" {
@@ -113,12 +115,14 @@ func createRouter(l zerolog.Logger, prefix, cn, v, bd, slackname, slacklink stri
 		builddate:        bd,
 		slackChannelName: slackname,
 		slackChannelLink: slacklink,
+		TimeIsEditable:   timeIsEditable,
 	}
 
 	withLogger := loggingHandlerFactory(l)
 	r.Handle("/", withLogger(h.homePage)).Methods(http.MethodGet)
 	r.Handle("/suspend", withLogger(h.suspendPage)).Methods(http.MethodGet)
 	r.Handle("/unsuspend", withLogger(h.unsuspendPage)).Methods(http.MethodGet)
+	r.Handle("/update-next-suspend-time", withLogger(h.updateNextSuspendTime)).Methods(http.MethodPost)
 	r.Handle("/bug", withLogger(h.bugPage)).Methods(http.MethodGet)
 	r.NotFoundHandler = withLogger(h.errorPage)
 
@@ -289,6 +293,7 @@ func (h handler) homePage(w http.ResponseWriter, r *http.Request, l zerolog.Logg
 	p := Page{
 		Version:   h.version,
 		BuildDate: h.builddate,
+		TimeIsEditable: h.TimeIsEditable,
 	}
 	// var nsList ListNamespacesAndStates
 	for _, n := range namespaces.Items {
@@ -360,4 +365,89 @@ func loggingHandlerFactory(l zerolog.Logger) func(loggingHandlerFunc) *loggingHa
 	return func(hf loggingHandlerFunc) *loggingHandler {
 		return &loggingHandler{l, hf}
 	}
+}
+
+// updateNextSuspendTime handles the requests to update the NextSuspendTime annotation of a namespace.
+func (h handler) updateNextSuspendTime(w http.ResponseWriter, r *http.Request, l zerolog.Logger) {
+    if r.Method == http.MethodPost {
+        err := r.ParseForm()
+        if err != nil {
+            l.Error().Err(err).Str("page", "/update-next-suspend-time").Msg("cannot parse form data")
+            http.Error(w, "Failed to parse form data", http.StatusBadRequest)
+            return
+        }
+
+				for key, values := range r.Form {
+					for _, value := range values {
+							l.Info().Str("page", "/update-next-suspend-time").Msgf("Received form param: %s = %s", key, value)
+					}
+				}
+
+        namespace := r.FormValue("name")
+        nextSuspendTime := r.FormValue("nextSuspendTime")
+
+        if namespace == "" {
+            l.Error().Str("page", "/update-next-suspend-time").Msg("Missing 'name' parameter")
+            http.Error(w, "One 'name' parameter is required.", http.StatusBadRequest)
+            return
+        }
+
+        if nextSuspendTime == "" {
+            l.Error().Str("page", "/update-next-suspend-time").Msg("Missing 'nextSuspendTime' parameter")
+            http.Error(w, "One 'nextSuspendTime' parameter is required.", http.StatusBadRequest)
+            return
+        }
+
+        l.Info().Str("namespace", namespace).Msgf("Received nextSuspendTime: %s", nextSuspendTime)
+
+        parsedTime, err := time.Parse("02 Jan 06 15:04 MST", nextSuspendTime)
+        if err != nil {
+            l.Error().Err(err).Str("namespace", namespace).Msg("Cannot parse nextSuspendTime")
+            http.Error(w, "Invalid time format. Use YYYY-MM-DD HH:MM.", http.StatusBadRequest)
+            return
+        }
+
+        formattedTime := parsedTime.Format(time.RFC822Z)
+
+        l.Info().Str("namespace", namespace).Msgf("Updating NextSuspendTime to %s", formattedTime)
+
+        err = patchNextSuspendTime(namespace, h.prefix, formattedTime, l)
+        if err != nil {
+            l.Error().Err(err).Str("namespace", namespace).Msg("Failed to update NextSuspendTime")
+            http.Error(w, "Failed to update NextSuspendTime", http.StatusInternalServerError)
+            return
+        }
+
+        l.Info().Str("namespace", namespace).Msgf("Successfully updated NextSuspendTime to %s", formattedTime)
+        http.Redirect(w, r, "/", http.StatusSeeOther)
+    }
+}
+
+func patchNextSuspendTime(namespace, prefix, nextSuspendTimeValue string, l zerolog.Logger) error {
+	ctx := context.TODO()
+
+	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+		res, err := cs.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
+		if err != nil {
+			l.Error().Err(err).Str("namespace", namespace).Msg("failed to get namespace")
+			return err
+		}
+
+		res.Annotations[prefix+engine.NextSuspendTime] = nextSuspendTimeValue
+
+		l.Trace().Str("namespace", namespace).Msgf("updating namespace, setting '%s=%s'", prefix+engine.NextSuspendTime, nextSuspendTimeValue)
+
+		_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+		if err != nil {
+			l.Error().Err(err).Str("namespace", namespace).Msg("failed to update NextSuspendTime annotation")
+		}
+
+		return err
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to update NextSuspendTime for namespace %s: %w", namespace, err)
+	}
+
+	return nil
 }
