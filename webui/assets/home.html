@@ -45,35 +45,50 @@
         <th style="text-align: center;">Action</th>
       </tr>
       {{range .NamespacesList.Namespaces}}
-        <tr>
-          <td><code>{{.Name}}</code></td>
-          <td style="text-align: center;">
-            {{if eq .State "Running"}}
-            <span class="badge badge-pill badge-info">{{.State}}</span>
-            {{else if eq .State "Suspended"}}
-            <span class="badge badge-pill badge-danger">{{.State}}</span>
-            {{else}}
-            <span class="badge badge-pill badge-secondary">Unknown</span>
-            {{end}}
-          </td>
-          <td style="text-align: center;">{{.DailySuspendTime}}</td>
-          <td style="text-align: center;">{{.NextSuspendTime}}</td>
-          <td style="text-align: center;">
-            {{if eq .State "Running"}}
-              <a href="/suspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i class="fa fa-pause-circle-o" aria-hidden="true"></i> Suspend</a>
-            {{else if eq .State "Suspended"}}
-              <a href="/unsuspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i class="fa fa-play-circle-o" aria-hidden="true"></i> Unsuspend</a>
-            {{else}}
-            <a href="/suspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i class="fa fa-pause-circle-o" aria-hidden="true"></i> Suspend</a>
-            / <a href="/unsuspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i class="fa fa-play-circle-o" aria-hidden="true"></i> Unsuspend</a>
-            {{end}}
-          </td>
-        </tr>
+      <tr>
+        <td><code>{{.Name}}</code></td>
+        <td style="text-align: center;">
+          {{if eq .State "Running"}}
+          <span class="badge badge-pill badge-info">{{.State}}</span>
+          {{else if eq .State "Suspended"}}
+          <span class="badge badge-pill badge-danger">{{.State}}</span>
+          {{else}}
+          <span class="badge badge-pill badge-secondary">Unknown</span>
+          {{end}}
+        </td>
+        <td style="text-align: center;">{{.DailySuspendTime}}</td>
+        <td style="text-align: center;">
+          {{if $.TimeIsEditable}}
+          <form action="/update-next-suspend-time" method="POST">
+            <input type="hidden" name="name" value="{{.Name}}">
+            <input type="text" name="nextSuspendTime" id="nextSuspendTimeInput{{.Name}}" value="{{.NextSuspendTime}}"
+              class="form-control" onkeydown="submitOnEnter(event, this.form)">
+          </form>
+          {{else}}
+          {{.NextSuspendTime}}
+          {{end}}
+        </td>
+        <td style="text-align: center;">
+          {{if eq .State "Running"}}
+          <a href="/suspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i class="fa fa-pause-circle-o"
+              aria-hidden="true"></i> Suspend</a>
+          {{else if eq .State "Suspended"}}
+          <a href="/unsuspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i class="fa fa-play-circle-o"
+              aria-hidden="true"></i> Unsuspend</a>
+          {{else}}
+          <a href="/suspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i class="fa fa-pause-circle-o"
+              aria-hidden="true"></i> Suspend</a>
+          / <a href="/unsuspend?name={{.Name}}" class="btn btn-light btn-sm" role="button"><i
+              class="fa fa-play-circle-o" aria-hidden="true"></i> Unsuspend</a>
+          {{end}}
+        </td>
+      </tr>
       {{end}}
     </table>
-      </table>
-      <br>
-      <button type="button" class="btn btn-light" onclick="window.location.reload();"><i class="fa fa-refresh" aria-hidden="true"></i> Refresh list</button>
+    </table>
+    <br>
+    <button type="button" class="btn btn-light" onclick="window.location.reload();"><i class="fa fa-refresh"
+        aria-hidden="true"></i> Refresh list</button>
   </div>
 </body>
 

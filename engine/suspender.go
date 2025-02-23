@@ -181,8 +181,40 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 					sLogger.Debug().Str("step", stepName).Msgf("%s is not yet past (value: %s, now: %s), not doing anything", NextSuspendTime+DailySuspendTime, nextSuspendAt, time.Now().Local())
 				}
 			} else {
-				sLogger.Warn().Msgf("'%s' annotation not found on namespace", eng.Options.Prefix+NextSuspendTime)
+				sLogger.Warn().Msgf("'%s' annotation not found on namespace, adding...", eng.Options.Prefix+NextSuspendTime)
+
+				// Add the nextSuspendTimeValue annotation if is missing and RunningDurationForce=true
+				if	eng.Options.RunningDurationForce {
+					nextSuspendTimeValue := time.Now().Add(eng.RunningDuration).Format(time.RFC822Z)
+					if err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
+							sLogger.Trace().Str("step", stepName).Msgf("get namespace")
+							res, err := cs.CoreV1().Namespaces().Get(ctx, n.Name, metav1.GetOptions{})
+							if err != nil {
+									return err
+							}
+
+							// we set the annotation to nextSuspendTime using the configured running duration
+							sLogger.Trace().Str("step", stepName).Msgf("setting namespace annotation '%s=%s'", eng.Options.Prefix+NextSuspendTime, nextSuspendTimeValue)
+							res.Annotations[eng.Options.Prefix+NextSuspendTime] = nextSuspendTimeValue
+
+							sLogger.Trace().Str("step", stepName).Msgf("updating namespace, RunningDurationForce is true")
+							_, err = cs.CoreV1().Namespaces().Update(ctx, res, metav1.UpdateOptions{})
+							return err
+					}); err != nil {
+							sLogger.Error().Err(err).Msgf("cannot update namespace object")
+							// we give up and handle the next namespace
+							sLogger.Debug().Str("step", stepName).Msgf("suspender loop ended, duration: %s", time.Since(start))
+							continue
+					} else {
+							sLogger.Debug().Str("step", stepName).Msgf("added annotation '%s=%s' to namespace, going back to the start of the switch-case", NextSuspendTime, nextSuspendTimeValue)
+
+							break
+					}
+				} else {
+    				sLogger.Debug().Str("step", stepName).Msg("Skipping annotation update because RunningDurationForce is not true")
+				}
 			}
+
 		case Suspended:
 			sLogger.Debug().Str("step", stepName).Msgf("found annotation '%s=%s'", eng.Options.Prefix+DesiredState, dState)
 		default:
