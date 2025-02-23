@@ -221,6 +221,13 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			sLogger.Warn().Err(err).Msg("cannot list cronjobs with API version batchv1beta")
 		}
 
+		// get jobs of the namespace
+		sLogger.Debug().Str("step", stepName).Str("resource", "jobs").Str("apiVersion", "batchv1").Msg("get resource from k8s")
+		jobs, err := cs.BatchV1().Jobs(n.Name).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			sLogger.Warn().Err(err).Msg("cannot list jobs with API version batchv1")
+		}
+
 		// get statefulsets of the namespace
 		sLogger.Debug().Str("step", stepName).Str("resource", "statefulsets").Msg("get resource from k8s")
 		statefulsets, err := cs.AppsV1().StatefulSets(n.Name).List(ctx, metav1.ListOptions{})
@@ -293,7 +300,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			sLogger.Debug().Str("step", stepName).Msg("checking suspended Conformity")
 			// the checks will be done concurrently to optimise verification duration
 			var wg sync.WaitGroup
-			wg.Add(4)
+			wg.Add(5)
 
 			// check and patch deployments
 			sLogger.Debug().Str("step", stepName).Str("resource", "deployments").Msg("checking suspended Conformity")
@@ -317,6 +324,15 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			go func() {
 				if err := checkSuspendedCronjobsBetaConformity(ctx, sLogger, cronjobsBeta.Items, cs, n.Name); err != nil {
 					sLogger.Error().Err(err).Str("object", "cronjob").Msg("suspended cronjobs conformity checks failed")
+				}
+				wg.Done()
+			}()
+
+			// check and patch jobs
+			sLogger.Debug().Str("step", stepName).Str("resource", "jobs").Msg("checking suspended Conformity")
+			go func() {
+				if err := checkSuspendedJobsConformity(ctx, sLogger, jobs.Items, cs, n.Name); err != nil {
+					sLogger.Error().Err(err).Str("object", "job").Msg("suspended jobs conformity checks failed")
 				}
 				wg.Done()
 			}()
@@ -392,7 +408,7 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 			var patchedResourcesCounter int
 
 			sLogger.Debug().Str("step", stepName).Msgf("namespace is seen as being '%s'", dState)
-			wg.Add(4)
+			wg.Add(5)
 
 			sLogger.Debug().Str("step", stepName).Msg("checking running conformity")
 
@@ -432,6 +448,20 @@ func (eng *Engine) Suspender(ctx context.Context, cs *kubernetes.Clientset, keda
 				}
 				if hasBeenPatched {
 					sLogger.Debug().Str("step", stepName).Str("resource", "cronjobs").Msg("resource has been patched")
+					patchedResourcesCounter++
+				}
+				wg.Done()
+			}()
+
+			// check and patch jobs
+			sLogger.Debug().Str("step", stepName).Str("resource", "jobs").Msg("checking running conformity")
+			go func() {
+				hasBeenPatched, err := checkRunningJobsConformity(ctx, sLogger, jobs.Items, cs, n.Name)
+				if err != nil {
+					sLogger.Error().Err(err).Msg("running jobs conformity checks failed")
+				}
+				if hasBeenPatched {
+					sLogger.Debug().Str("step", stepName).Str("resource", "jobs").Msg("resource has been patched")
 					patchedResourcesCounter++
 				}
 				wg.Done()
