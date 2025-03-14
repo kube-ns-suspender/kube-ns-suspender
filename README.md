@@ -1,3 +1,6 @@
+> [!WARNING]
+> This project is **no longer maintained** and is not up-to-date with new Kubernetes versions.
+
 # kube-ns-suspender
 
 [![E2E k8S tests](https://github.com/govirtuo/kube-ns-suspender/actions/workflows/test-k8s.yaml/badge.svg?branch=main)](https://github.com/govirtuo/kube-ns-suspender/actions/workflows/test-k8s.yaml)
@@ -10,23 +13,6 @@ Kubernetes controller managing namespaces life cycle.
   - [Goal](#goal)
   - [Installation](#installation)
   - [Usage](#usage)
-    - [Internals](#internals)
-      - [The watcher](#the-watcher)
-      - [The suspender](#the-suspender)
-    - [Flags](#flags)
-    - [Resources](#resources)
-    - [States](#states)
-    - [Annotations](#annotations)
-      - [On namespaces](#on-namespaces)
-        - [**controllerName**](#controllername)
-        - [**dailySuspendTime**](#dailysuspendtime)
-        - [**desiredState**](#desiredstate)
-        - [**nextSuspendTime**](#nextsuspendtime)
-      - [On resources](#on-resources)
-        - [Deployments and Stateful Sets](#deployments-and-stateful-sets)
-        - [Cronjobs](#cronjobs)
-    - [Metrics](#metrics)
-    - [Profiling](#profiling)
   - [WebUI screenshots](#webui-screenshots)
   - [Development flow](#development-flow)
   - [Testing](#testing)
